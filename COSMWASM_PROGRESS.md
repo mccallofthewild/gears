@@ -19,3 +19,17 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
 - [x] **x/wasm/src/client/rest.rs** – REST handlers mirroring the gRPC interface for web applications.
 - [x] **x/wasm/src/client/mod.rs** – aggregates CLI, gRPC and REST interfaces for consumers.
 - [x] **x/wasm/src/lib.rs** – module root re-exporting the keeper, engine, clients and other components; depends on all previous files.
+
+## Outstanding TODOs
+- [ ] `gears/src/baseapp/query.rs:28` - TODO regarding `QueryRequest::height` design.
+- [ ] `gears/src/context/query.rs:29` - placeholder chain id `"todo-900"` in `QueryContext::new`.
+- [ ] `x/bank/src/abci_handler.rs:57` - `todo!()` in `BankNodeQueryRequest::height`.
+- [ ] `x/auth/src/abci_handler.rs:38` - `todo!()` in `AuthNodeQueryRequest::height`.
+- [ ] `x/staking/src/abci_handler.rs:79` - `todo!()` in `StakingNodeQueryRequest::height`.
+- [ ] `x/upgrade/src/types/query.rs:18` - `todo!()` in `UpgradeQueryRequest::height`.
+- [ ] `x/distribution/src/keeper/mod.rs:108` - `todo!()` for missing branch.
+- [ ] `x/staking/src/keeper/query.rs:182` - `todo!()` placeholder for redelegation query.
+- [ ] `x/staking/src/keeper/query.rs:187` - additional redelegation query `todo!()`.
+- [ ] `x/gov/src/query/mod.rs:36` - `todo!()` in `GovQuery::height` implementation.
+- [ ] `x/gov/src/genesis.rs:30` - `todo!()` in genesis account handling.
+- [ ] `x/evidence/src/types/mod.rs:123` - `todo!()` pending YAML formatting logic.
