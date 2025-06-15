@@ -1,8 +1,11 @@
 //! CosmWasm module scaffolding.
 //!
-//! This crate integrates the CosmWasm virtual machine (`cosmwasm_vm`) with the
-//! Gears application framework. It mirrors the design of the Go `x/wasm` module
-//! in [`wasmd`](https://github.com/CosmWasm/wasmd) but leverages Rust directly.
+//! This crate integrates the CosmWasm virtual machine
+//! ([`cosmwasm_vm`](https://github.com/CosmWasm/cosmwasm/tree/main/packages/vm))
+//! with the Gears application framework. It mirrors the design of the Go
+//! `x/wasm` module in [`wasmd`](https://github.com/CosmWasm/wasmd) while staying
+//! entirely in Rust.  The public API is modelled after the Go bindings provided
+//! by [`wasmvm`](https://github.com/CosmWasm/wasmvm).
 //!
 //! The crate exposes a public `Keeper` responsible for managing contract code
 //! and instances. Execution is delegated to a pluggable [`WasmEngine`] trait,
@@ -33,6 +36,7 @@ mod params;
 mod types;
 
 pub use abci_handler::*;
+pub use client::*;
 pub use engine::*;
 pub use error::*;
 pub use genesis::*;
