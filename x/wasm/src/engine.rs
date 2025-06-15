@@ -45,14 +45,13 @@ use std::{collections::HashMap, convert::TryInto};
 /// type as well as the helper functions in
 /// [`cosmwasm_vm::calls`](https://github.com/CosmWasm/cosmwasm/blob/main/packages/vm/src/calls.rs).
 pub trait WasmEngine {
-    /// Stores new contract code and returns an identifier.
+    /// Stores new contract code under a user supplied identifier.
     ///
-    /// Equivalent to [`VM.StoreCode`](https://github.com/CosmWasm/wasmvm/blob/main/lib_libwasmvm.go#L150-L169)
-    /// in the Go bindings. It compiles the Wasm bytecode and places it in the
-    /// [`Cache`](https://github.com/CosmWasm/cosmwasm/blob/main/packages/vm/src/cache.rs)
-    /// managed by this engine. `cosmwasm_vm` produces a [`Checksum`](https://docs.rs/cosmwasm-std/latest/cosmwasm_std/struct.Checksum.html)
-    /// which is truncated to fit a `u64` identifier.
-    fn store_code(&mut self, wasm: &[u8]) -> Result<u64, VmError>;
+    /// In `wasmd` the next `code_id` is tracked in the keeper and provided to
+    /// the wasm VM when uploading code. To mirror that behaviour the caller
+    /// passes the desired `code_id` here and the engine persists the compiled
+    /// module in its cache.
+    fn store_code(&mut self, code_id: u64, wasm: &[u8]) -> Result<(), VmError>;
 
     /// Instantiates a contract from previously stored code.
     ///
@@ -99,6 +98,15 @@ where
     code_map: HashMap<u64, Checksum>,
 }
 
+fn id_from_contract_addr(addr: &[u8]) -> Option<u64> {
+    if addr.len() < 8 {
+        return None;
+    }
+    let mut bytes = [0u8; 8];
+    bytes.copy_from_slice(&addr[addr.len() - 8..]);
+    Some(u64::from_be_bytes(bytes))
+}
+
 impl<A, S, Q> CosmwasmEngine<A, S, Q>
 where
     A: BackendApi + 'static,
@@ -126,22 +134,16 @@ where
     S: Storage + Default + 'static,
     Q: Querier + Default + 'static,
 {
-    fn store_code(&mut self, wasm: &[u8]) -> Result<u64, VmError> {
+    fn store_code(&mut self, code_id: u64, wasm: &[u8]) -> Result<(), VmError> {
         // Delegate to `Cache::store_code` which performs wasm validation and
-        // compilation. This is the same logic used by `VM.StoreCode` in the Go
-        // bindings. On success a [`Checksum`](https://docs.rs/cosmwasm-std/latest/cosmwasm_std/struct.Checksum.html)
-        // identifying the code is returned.
+        // compilation. This mirrors the behaviour of `VM.StoreCode` in the Go
+        // bindings.
         let checksum = self.cache.store_code(wasm, true, true)?;
 
-        // FIXME: Go's `wasmvm` uses the full 32 byte checksum as the key while
-        // Gears currently truncates it to eight bytes to produce a `u64`.
-        // This is lossy and risks collisions. A proper mapping should be
-        // implemented when integrating with on-chain state.
-        let bytes: Vec<u8> = checksum.into();
-        let code_bytes: [u8; 8] = bytes[..8].try_into().expect("checksum length");
-        let id = u64::from_be_bytes(code_bytes);
-        self.code_map.insert(id, checksum);
-        Ok(id)
+        // Associate the supplied code id with the produced checksum so we can
+        // retrieve it on instantiation. The caller ensures the id is unique.
+        self.code_map.insert(code_id, checksum);
+        Ok(())
     }
 
     fn instantiate(&mut self, code_id: u64, msg: &[u8]) -> Result<Vec<u8>, VmError> {
@@ -171,11 +173,11 @@ where
     }
 
     fn execute(&mut self, contract_addr: &[u8], msg: &[u8]) -> Result<Vec<u8>, VmError> {
+        let contract_id = id_from_contract_addr(contract_addr)
+            .ok_or_else(|| VmError::cache_err("malformed contract address"))?;
         let checksum = self
             .code_map
-            .get(&u64::from_be_bytes(
-                contract_addr.try_into().unwrap_or_default(),
-            ))
+            .get(&contract_id)
             .ok_or_else(|| VmError::cache_err("unknown contract"))?;
 
         let backend = Backend {
@@ -195,11 +197,11 @@ where
     }
 
     fn query(&self, contract_addr: &[u8], msg: &[u8]) -> Result<Vec<u8>, VmError> {
+        let contract_id = id_from_contract_addr(contract_addr)
+            .ok_or_else(|| VmError::cache_err("malformed contract address"))?;
         let checksum = self
             .code_map
-            .get(&u64::from_be_bytes(
-                contract_addr.try_into().unwrap_or_default(),
-            ))
+            .get(&contract_id)
             .ok_or_else(|| VmError::cache_err("unknown contract"))?;
 
         let backend = Backend {
