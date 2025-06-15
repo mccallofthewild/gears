@@ -16,22 +16,107 @@
 //!   checksums and compilation before execution is allowed.
 //! - Panic-free error handling is required to avoid halting the node on corrupt
 //!   genesis files.
+use gears::baseapp::genesis::Genesis;
+use gears::{
+    context::{init::InitContext, query::QueryContext},
+    params::ParamsSubspaceKey,
+    store::{database::Database, StoreKey},
+};
 use serde::{Deserialize, Serialize};
 
+use crate::{engine::WasmEngine, error::WasmError, keeper::Keeper};
+use std::convert::TryInto;
+
 /// Structure representing wasm module genesis data.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+///
+/// For now we only persist raw WASM blobs and the next sequence counter. In a
+/// full implementation contract metadata and instances would also be recorded.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GenesisState {
-    /// Placeholder for stored contract code and metadata.
-    pub codes: Vec<Vec<u8>>, // TODO: proper structures
+    /// Raw WASM binaries to load at genesis. The order is preserved so that
+    /// subsequent contract instantiations can reference the assigned `code_id`.
+    pub codes: Vec<Vec<u8>>,
+    /// Sequence value for generating the next `code_id` when new code is
+    /// uploaded.  This mirrors the `Sequence` entries in wasmd genesis files.
+    pub next_code_id: u64,
 }
 
+impl Genesis for GenesisState {}
+
 /// Initialise module state from genesis data.
-pub fn init_genesis<S>(_state: &GenesisState, _keeper: &mut S) {
-    // TODO: load codes into keeper
+///
+/// Each WASM blob is passed to [`Keeper::store_code`] which performs basic
+/// validation and persists the bytes under a new code identifier. After all
+/// code is loaded the sequence counter is set to the provided `next_code_id` so
+/// further uploads continue from that value.
+pub fn init_genesis<SK, PSK, E, DB>(
+    ctx: &mut InitContext<'_, DB, SK>,
+    keeper: &mut Keeper<SK, PSK, E>,
+    genesis: GenesisState,
+) -> Result<(), WasmError>
+where
+    SK: StoreKey,
+    PSK: ParamsSubspaceKey,
+    E: WasmEngine,
+    DB: Database,
+{
+    for wasm in genesis.codes {
+        keeper.store_code(ctx, &wasm)?;
+    }
+
+    ctx.kv_store_mut(&keeper.store_key).set(
+        crate::keeper::NEXT_CODE_ID_KEY,
+        genesis.next_code_id.to_be_bytes().to_vec(),
+    )?;
+
+    Ok(())
 }
 
 /// Export current module state to genesis format.
-pub fn export_genesis<S>(_keeper: &S) -> GenesisState {
-    // TODO: read codes from keeper
-    GenesisState { codes: Vec::new() }
+///
+/// The keeper's store is scanned for all code entries which are returned
+/// alongside the next sequence value.
+pub fn export_genesis<SK, PSK, E, DB>(
+    ctx: &QueryContext<DB, SK>,
+    keeper: &Keeper<SK, PSK, E>,
+) -> GenesisState
+where
+    SK: StoreKey,
+    PSK: ParamsSubspaceKey,
+    E: WasmEngine,
+    DB: Database,
+{
+    let store = ctx.kv_store(&keeper.store_key);
+    let code_store = store.prefix_store(crate::keeper::CODE_PREFIX);
+    let codes: Vec<Vec<u8>> = code_store
+        .into_range(..)
+        .map(|(_, v)| v.into_owned())
+        .collect();
+
+    let next = store
+        .get(&crate::keeper::NEXT_CODE_ID_KEY)
+        .map(|v| u64::from_be_bytes(v.as_slice().try_into().unwrap_or([0; 8])))
+        .unwrap_or(0);
+
+    GenesisState {
+        codes,
+        next_code_id: next,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_genesis() {
+        let data = r#"{
+            "codes": ["aGVsbG8="],
+            "next_code_id": 1
+        }"#;
+
+        let state: GenesisState = serde_json::from_str(data).expect("valid json");
+        assert_eq!(state.codes.len(), 1);
+        assert_eq!(state.next_code_id, 1);
+    }
 }
