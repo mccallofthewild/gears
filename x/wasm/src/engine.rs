@@ -97,6 +97,17 @@ where
     pub cache: Cache<A, S, Q>,
     /// Mapping from numeric IDs to checksums.
     code_map: HashMap<u64, Checksum>,
+    /// Next free code identifier.
+    next_code_id: u64,
+}
+
+fn id_from_contract_addr(addr: &[u8]) -> Option<u64> {
+    if addr.len() < 8 {
+        return None;
+    }
+    let mut bytes = [0u8; 8];
+    bytes.copy_from_slice(&addr[addr.len() - 8..]);
+    Some(u64::from_be_bytes(bytes))
 }
 
 impl<A, S, Q> CosmwasmEngine<A, S, Q>
@@ -116,6 +127,7 @@ where
         Ok(Self {
             cache: Cache::new(options)?,
             code_map: HashMap::new(),
+            next_code_id: 1,
         })
     }
 }
@@ -133,13 +145,9 @@ where
         // identifying the code is returned.
         let checksum = self.cache.store_code(wasm, true, true)?;
 
-        // FIXME: Go's `wasmvm` uses the full 32 byte checksum as the key while
-        // Gears currently truncates it to eight bytes to produce a `u64`.
-        // This is lossy and risks collisions. A proper mapping should be
-        // implemented when integrating with on-chain state.
-        let bytes: Vec<u8> = checksum.into();
-        let code_bytes: [u8; 8] = bytes[..8].try_into().expect("checksum length");
-        let id = u64::from_be_bytes(code_bytes);
+        let id = self.next_code_id;
+        self.next_code_id += 1;
+
         self.code_map.insert(id, checksum);
         Ok(id)
     }
@@ -171,11 +179,11 @@ where
     }
 
     fn execute(&mut self, contract_addr: &[u8], msg: &[u8]) -> Result<Vec<u8>, VmError> {
+        let contract_id = id_from_contract_addr(contract_addr)
+            .ok_or_else(|| VmError::cache_err("malformed contract address"))?;
         let checksum = self
             .code_map
-            .get(&u64::from_be_bytes(
-                contract_addr.try_into().unwrap_or_default(),
-            ))
+            .get(&contract_id)
             .ok_or_else(|| VmError::cache_err("unknown contract"))?;
 
         let backend = Backend {
@@ -195,11 +203,11 @@ where
     }
 
     fn query(&self, contract_addr: &[u8], msg: &[u8]) -> Result<Vec<u8>, VmError> {
+        let contract_id = id_from_contract_addr(contract_addr)
+            .ok_or_else(|| VmError::cache_err("malformed contract address"))?;
         let checksum = self
             .code_map
-            .get(&u64::from_be_bytes(
-                contract_addr.try_into().unwrap_or_default(),
-            ))
+            .get(&contract_id)
             .ok_or_else(|| VmError::cache_err("unknown contract"))?;
 
         let backend = Backend {
