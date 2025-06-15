@@ -11,7 +11,7 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
 - [x] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton. Called by the keeper to execute contracts.
 - [x] **x/wasm/src/keeper.rs** – core keeper managing state and delegating execution to a `WasmEngine`. Relied on by genesis and the ABCI handler.
 - [x] **x/wasm/src/genesis.rs** – handles loading and exporting module state at genesis using the keeper.
-- [ ] **x/wasm/src/abci_handler.rs** – ABCI entry points wiring transactions and queries to the keeper and message types.
+- [x] **x/wasm/src/abci_handler.rs** – ABCI entry points wiring transactions and queries to the keeper and message types.
 - [ ] **x/wasm/src/client/cli/query.rs** – CLI subcommands for querying wasm state, built on the query types.
 - [ ] **x/wasm/src/client/cli/tx.rs** – CLI subcommands for broadcasting wasm transactions defined in `message.rs`.
 - [ ] **x/wasm/src/client/cli/mod.rs** – groups the query and transaction CLI into a single module.

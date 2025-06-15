@@ -62,10 +62,18 @@ fn next_code_id<SK: StoreKey, DB: Database, CTX: TransactionalContext<DB, SK>>(
         None => 0,
     };
     store.set(NEXT_CODE_ID_KEY, (id + 1).encode_vec())?;
+    // NOTE: This counter lives in the IAVL store so any forks that rewrite
+    // history could cause mismatches between the engine cache and persistent
+    // state. Aligning this with `wasmd`'s behaviour requires careful replay of
+    // all writes during genesis and upgrades.
     Ok(id)
 }
 
 fn contract_address(id: u64) -> Vec<u8> {
+    // Contracts are addressed by appending the numeric id to a 12 byte zero
+    // prefix which roughly matches the 20 byte address format used in
+    // `wasmd`. Any change here must keep the address stable across nodes or
+    // previously instantiated contracts will become unreachable.
     let mut out = vec![0u8; 12];
     out.extend_from_slice(&id.to_be_bytes());
     out
@@ -95,6 +103,11 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
     }
 
     /// Store new contract code after validation by the engine.
+    ///
+    /// Equivalent to `StoreCode` in `wasmd`. The wasm bytecode is compiled
+    /// via the [`WasmEngine`] and persisted under a sequential identifier.  A
+    /// major footgun here is the truncated mapping of checksums to `u64`
+    /// identifiers which can lead to collisions if not handled carefully.
     pub fn store_code<DB: Database, CTX: TransactionalContext<DB, SK>>(
         &mut self,
         ctx: &mut CTX,
@@ -112,6 +125,11 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
     }
 
     /// Instantiate a contract from previously stored code.
+    ///
+    /// Mirrors the `Instantiate` call in both `wasmd` and the Go `wasmvm`
+    /// bindings. A new bech32 address is created by appending the contract id to
+    /// a zeroed prefix. Be aware that address construction is chain specific and
+    /// must match the expected prefix and checksum format.
     pub fn instantiate<DB: Database, CTX: TransactionalContext<DB, SK>>(
         &mut self,
         ctx: &mut CTX,
@@ -129,6 +147,10 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
     }
 
     /// Execute a contract call.
+    ///
+    /// Looks up the contract's code id and delegates execution to the engine.
+    /// Currently there is no access control or admin logic implemented which is
+    /// a deviation from `wasmd`'s production behaviour.
     pub fn execute<DB: Database, CTX: TransactionalContext<DB, SK>>(
         &mut self,
         ctx: &mut CTX,
@@ -147,6 +169,9 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
     }
 
     /// Run a read-only query against a contract.
+    ///
+    /// Queries pass through the engine in read-only mode. The caller must
+    /// ensure the contract exists otherwise a generic keeper error is returned.
     pub fn query<DB: Database, CTX: QueryableContext<DB, SK>>(
         &self,
         ctx: &CTX,

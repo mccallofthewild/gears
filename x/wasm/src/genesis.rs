@@ -1,9 +1,12 @@
 //! Genesis state management for the wasm module.
 //!
 //! Handles initial loading of contract code and metadata from the genesis file
-//! as well as exporting the current state during chain upgrades. The structure
-//! mirrors the approach used by `wasmd` where code and contract info are stored
-//! in dedicated sub-stores keyed by identifiers.
+//! as well as exporting the current state during chain upgrades.  The layout is
+//! inspired by [`wasmd`](https://github.com/CosmWasm/wasmd/blob/main/x/wasm)
+//! where code and contract info are stored under dedicated key prefixes and a
+//! sequence counter tracks the next free identifier.  The interface mirrors the
+//! behaviour of the Go [`wasmvm`](https://github.com/CosmWasm/wasmvm) bindings
+//! which expect the engine to receive pre‐allocated code IDs.
 //!
 //! Responsibilities:
 //! - Define `GenesisState` structures serialisable via `serde`/protobuf.
@@ -29,8 +32,10 @@ use std::convert::TryInto;
 
 /// Structure representing wasm module genesis data.
 ///
-/// For now we only persist raw WASM blobs and the next sequence counter. In a
-/// full implementation contract metadata and instances would also be recorded.
+/// This mirrors [`GenesisState`](https://github.com/CosmWasm/wasmd/blob/main/x/wasm/types/genesis.go)
+/// from `wasmd` albeit heavily simplified. Only raw code bytes and the next
+/// sequence number are tracked here. A complete implementation would include
+/// contract metadata, histories and pinned code checksums.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GenesisState {
     /// Raw WASM binaries to load at genesis. The order is preserved so that
@@ -60,6 +65,9 @@ where
     E: WasmEngine,
     DB: Database,
 {
+    // load all provided wasm blobs via the keeper. This mirrors the
+    // behaviour of `wasmd` where code is prevalidated and pinned during chain
+    // initialisation.
     for wasm in genesis.codes {
         keeper.store_code(ctx, &wasm)?;
     }
@@ -86,6 +94,8 @@ where
     E: WasmEngine,
     DB: Database,
 {
+    // replicate the scanning logic from `wasmd`'s genesis export. Each
+    // stored code blob is emitted in order for later replay.
     let store = ctx.kv_store(&keeper.store_key);
     let code_store = store.prefix_store(crate::keeper::CODE_PREFIX);
     let codes: Vec<Vec<u8>> = code_store
