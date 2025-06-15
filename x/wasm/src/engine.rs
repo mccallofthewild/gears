@@ -45,14 +45,13 @@ use std::{collections::HashMap, convert::TryInto};
 /// type as well as the helper functions in
 /// [`cosmwasm_vm::calls`](https://github.com/CosmWasm/cosmwasm/blob/main/packages/vm/src/calls.rs).
 pub trait WasmEngine {
-    /// Stores new contract code and returns an identifier.
+    /// Stores new contract code under a user supplied identifier.
     ///
-    /// Equivalent to [`VM.StoreCode`](https://github.com/CosmWasm/wasmvm/blob/main/lib_libwasmvm.go#L150-L169)
-    /// in the Go bindings. It compiles the Wasm bytecode and places it in the
-    /// [`Cache`](https://github.com/CosmWasm/cosmwasm/blob/main/packages/vm/src/cache.rs)
-    /// managed by this engine. `cosmwasm_vm` produces a [`Checksum`](https://docs.rs/cosmwasm-std/latest/cosmwasm_std/struct.Checksum.html)
-    /// which is truncated to fit a `u64` identifier.
-    fn store_code(&mut self, wasm: &[u8]) -> Result<u64, VmError>;
+    /// In `wasmd` the next `code_id` is tracked in the keeper and provided to
+    /// the wasm VM when uploading code. To mirror that behaviour the caller
+    /// passes the desired `code_id` here and the engine persists the compiled
+    /// module in its cache.
+    fn store_code(&mut self, code_id: u64, wasm: &[u8]) -> Result<(), VmError>;
 
     /// Instantiates a contract from previously stored code.
     ///
@@ -97,8 +96,6 @@ where
     pub cache: Cache<A, S, Q>,
     /// Mapping from numeric IDs to checksums.
     code_map: HashMap<u64, Checksum>,
-    /// Next free code identifier.
-    next_code_id: u64,
 }
 
 fn id_from_contract_addr(addr: &[u8]) -> Option<u64> {
@@ -127,7 +124,6 @@ where
         Ok(Self {
             cache: Cache::new(options)?,
             code_map: HashMap::new(),
-            next_code_id: 1,
         })
     }
 }
@@ -138,18 +134,16 @@ where
     S: Storage + Default + 'static,
     Q: Querier + Default + 'static,
 {
-    fn store_code(&mut self, wasm: &[u8]) -> Result<u64, VmError> {
+    fn store_code(&mut self, code_id: u64, wasm: &[u8]) -> Result<(), VmError> {
         // Delegate to `Cache::store_code` which performs wasm validation and
-        // compilation. This is the same logic used by `VM.StoreCode` in the Go
-        // bindings. On success a [`Checksum`](https://docs.rs/cosmwasm-std/latest/cosmwasm_std/struct.Checksum.html)
-        // identifying the code is returned.
+        // compilation. This mirrors the behaviour of `VM.StoreCode` in the Go
+        // bindings.
         let checksum = self.cache.store_code(wasm, true, true)?;
 
-        let id = self.next_code_id;
-        self.next_code_id += 1;
-
-        self.code_map.insert(id, checksum);
-        Ok(id)
+        // Associate the supplied code id with the produced checksum so we can
+        // retrieve it on instantiation. The caller ensures the id is unique.
+        self.code_map.insert(code_id, checksum);
+        Ok(())
     }
 
     fn instantiate(&mut self, code_id: u64, msg: &[u8]) -> Result<Vec<u8>, VmError> {

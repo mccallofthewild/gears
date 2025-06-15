@@ -26,6 +26,8 @@ const CODE_PREFIX: [u8; 1] = [0x01];
 const CONTRACT_PREFIX: [u8; 1] = [0x02];
 /// Key tracking the next available contract id.
 const NEXT_CONTRACT_ID_KEY: [u8; 1] = [0x03];
+/// Key tracking the next available code id.
+const NEXT_CODE_ID_KEY: [u8; 1] = [0x04];
 
 fn code_key(id: u64) -> Vec<u8> {
     [CODE_PREFIX.to_vec(), id.to_be_bytes().to_vec()].concat()
@@ -46,6 +48,20 @@ fn next_contract_id<SK: StoreKey, DB: Database, CTX: TransactionalContext<DB, SK
         None => 0,
     };
     store.set(NEXT_CONTRACT_ID_KEY, (id + 1).encode_vec())?;
+    Ok(id)
+}
+
+fn next_code_id<SK: StoreKey, DB: Database, CTX: TransactionalContext<DB, SK>>(
+    sk: &SK,
+    ctx: &mut CTX,
+) -> Result<u64, GasStoreErrors> {
+    let mut store = ctx.kv_store_mut(sk);
+    let current = store.get(&NEXT_CODE_ID_KEY)?;
+    let id: u64 = match current {
+        Some(raw) => u64::decode(Bytes::from(raw)).ok().unwrap_or(0),
+        None => 0,
+    };
+    store.set(NEXT_CODE_ID_KEY, (id + 1).encode_vec())?;
     Ok(id)
 }
 
@@ -88,7 +104,8 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
         if wasm.len() > params.max_wasm_size as usize {
             return Err(WasmError::InvalidCode("wasm too large".into()));
         }
-        let id = self.engine.store_code(wasm)?;
+        let id = next_code_id(&self.store_key, ctx)?;
+        self.engine.store_code(id, wasm)?;
         ctx.kv_store_mut(&self.store_key)
             .set(code_key(id), wasm.to_vec())?;
         Ok(id)
