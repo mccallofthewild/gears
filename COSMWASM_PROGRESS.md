@@ -16,6 +16,6 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
 - [x] **x/wasm/src/client/cli/tx.rs** – CLI subcommands for broadcasting wasm transactions defined in `message.rs`.
 - [x] **x/wasm/src/client/cli/mod.rs** – groups the query and transaction CLI into a single module.
 - [x] **x/wasm/src/client/grpc.rs** – gRPC service definitions exposing query and transaction helpers for external tooling.
-- [ ] **x/wasm/src/client/rest.rs** – REST handlers mirroring the gRPC interface for web applications.
+- [x] **x/wasm/src/client/rest.rs** – REST handlers mirroring the gRPC interface for web applications.
 - [ ] **x/wasm/src/client/mod.rs** – aggregates CLI, gRPC and REST interfaces for consumers.
 - [ ] **x/wasm/src/lib.rs** – module root re-exporting the keeper, engine, clients and other components; depends on all previous files.
