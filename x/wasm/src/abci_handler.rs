@@ -52,7 +52,10 @@ pub enum WasmNodeQueryRequest {
 
 impl QueryRequest for WasmNodeQueryRequest {
     fn height(&self) -> u32 {
-        todo!()
+        // Queries against the node API currently always fetch the latest block state.
+        // Returning `0` causes `BaseApp` to open the latest version of the multistore,
+        // matching wasmd's behaviour when no height is specified in the request.
+        0
     }
 }
 
