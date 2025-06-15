@@ -6,17 +6,25 @@
 
 use crate::{
     genesis::{init_genesis, GenesisState},
-    keeper::Keeper,
+    keeper::{Keeper, CODE_PREFIX, CONTRACT_PREFIX},
     message::{Message, MsgExecuteContract, MsgInstantiateContract, MsgStoreCode},
+    types::query::{
+        QueryCodeRequest, QueryCodeResponse, QueryCodesRequest, QueryCodesResponse,
+        QueryContractInfoRequest, QueryContractInfoResponse, QueryContractsByCodeRequest,
+        QueryContractsByCodeResponse, QueryRawContractStateRequest, QueryRawContractStateResponse,
+        QuerySmartContractStateRequest, QuerySmartContractStateResponse,
+    },
 };
 use address::AccAddress;
 use gears::{
     application::handlers::node::{ABCIHandler, ModuleInfo, TxError},
     baseapp::{errors::QueryError, NullQueryRequest, NullQueryResponse, QueryRequest},
     context::{init::InitContext, query::QueryContext, tx::TxContext},
+    extensions::gas::GasResultExt,
     params::ParamsSubspaceKey,
     store::{database::Database, StoreKey},
 };
+use serde::Serialize;
 use std::{marker::PhantomData, sync::Mutex};
 
 /// Handler wrapping a [`Keeper`] inside a `Mutex` so mutable access can be
@@ -29,6 +37,35 @@ where
 {
     keeper: Mutex<Keeper<SK, PSK, E>>,
     _marker: PhantomData<MI>,
+}
+
+#[derive(Clone, Debug, Query)]
+#[query(request)]
+pub enum WasmNodeQueryRequest {
+    Code(QueryCodeRequest),
+    Codes(QueryCodesRequest),
+    ContractInfo(QueryContractInfoRequest),
+    ContractsByCode(QueryContractsByCodeRequest),
+    Smart(QuerySmartContractStateRequest),
+    Raw(QueryRawContractStateRequest),
+}
+
+impl QueryRequest for WasmNodeQueryRequest {
+    fn height(&self) -> u32 {
+        todo!()
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Query)]
+#[serde(untagged)]
+#[query(response)]
+pub enum WasmNodeQueryResponse {
+    Code(QueryCodeResponse),
+    Codes(QueryCodesResponse),
+    ContractInfo(QueryContractInfoResponse),
+    ContractsByCode(QueryContractsByCodeResponse),
+    Smart(QuerySmartContractStateResponse),
+    Raw(QueryRawContractStateResponse),
 }
 
 impl<SK, PSK, E, MI> WasmABCIHandler<SK, PSK, E, MI>
@@ -57,16 +94,75 @@ where
 
     type StoreKey = SK;
 
-    type QReq = NullQueryRequest;
+    type QReq = WasmNodeQueryRequest;
 
-    type QRes = NullQueryResponse;
+    type QRes = WasmNodeQueryResponse;
 
     fn typed_query<DB: Database>(
         &self,
-        _ctx: &QueryContext<DB, Self::StoreKey>,
-        _query: Self::QReq,
+        ctx: &QueryContext<DB, Self::StoreKey>,
+        query: Self::QReq,
     ) -> Self::QRes {
-        unreachable!("typed queries not implemented for wasm module")
+        let keeper = self.keeper.lock().expect("poisoned mutex");
+        match query {
+            WasmNodeQueryRequest::Code(req) => {
+                let store = ctx.kv_store(&keeper.store_key).prefix_store(CODE_PREFIX);
+                let wasm = store
+                    .get(&req.code_id.to_be_bytes())
+                    .unwrap_gas()
+                    .unwrap_or_default();
+                WasmNodeQueryResponse::Code(QueryCodeResponse {
+                    wasm_byte_code: wasm,
+                })
+            }
+            WasmNodeQueryRequest::Codes(_) => {
+                let store = ctx.kv_store(&keeper.store_key).prefix_store(CODE_PREFIX);
+                let codes = store
+                    .into_range(..)
+                    .map(|(k, _)| u64::from_be_bytes(k.try_into().unwrap_or([0; 8])))
+                    .collect();
+                WasmNodeQueryResponse::Codes(QueryCodesResponse { code_ids: codes })
+            }
+            WasmNodeQueryRequest::ContractInfo(req) => {
+                let addr = AccAddress::try_from(req.address).unwrap();
+                let store = ctx
+                    .kv_store(&keeper.store_key)
+                    .prefix_store(CONTRACT_PREFIX);
+                let id = store
+                    .get(addr.as_ref())
+                    .unwrap_gas()
+                    .map(|v| u64::from_be_bytes(v.as_slice().try_into().unwrap_or([0; 8])))
+                    .unwrap_or(0);
+                WasmNodeQueryResponse::ContractInfo(QueryContractInfoResponse { code_id: id })
+            }
+            WasmNodeQueryRequest::ContractsByCode(req) => {
+                let store = ctx
+                    .kv_store(&keeper.store_key)
+                    .prefix_store(CONTRACT_PREFIX);
+                let contracts = store
+                    .into_range(..)
+                    .filter_map(|(k, v)| {
+                        let id = u64::from_be_bytes(v.as_slice().try_into().ok()?);
+                        if id == req.code_id {
+                            AccAddress::try_from(k).ok().map(|a| a.to_string())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                WasmNodeQueryResponse::ContractsByCode(QueryContractsByCodeResponse { contracts })
+            }
+            WasmNodeQueryRequest::Smart(req) => {
+                let addr = AccAddress::try_from(req.address).unwrap();
+                let data = keeper.query(ctx, &addr, &req.query_data).unwrap();
+                WasmNodeQueryResponse::Smart(QuerySmartContractStateResponse { data })
+            }
+            WasmNodeQueryRequest::Raw(req) => {
+                let addr = AccAddress::try_from(req.address).unwrap();
+                let data = keeper.query(ctx, &addr, &req.key).unwrap();
+                WasmNodeQueryResponse::Raw(QueryRawContractStateResponse { data })
+            }
+        }
     }
 
     fn run_ante_checks<DB: Database>(
