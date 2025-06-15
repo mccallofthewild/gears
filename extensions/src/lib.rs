@@ -1,4 +1,4 @@
-//! 
+//! Miscellaneous utility helpers shared across the workspace.
 
 pub mod corruption;
 pub mod gas;
