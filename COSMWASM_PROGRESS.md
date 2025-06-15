@@ -2,8 +2,8 @@
 
 Below is the recommended order for implementing the files within `x/wasm`. Each item includes a short description of its role and key files it interacts with.
 
-- [ ] **x/wasm/Cargo.toml** – crate manifest defining dependencies for the module. It underpins compilation of all subsequent files.
-- [ ] **x/wasm/src/message.rs** – transaction message structures such as `MsgStoreCode` and `MsgInstantiateContract`. Used by `abci_handler.rs` and CLI transaction commands.
+- [x] **x/wasm/Cargo.toml** – crate manifest defining dependencies for the module. It underpins compilation of all subsequent files.
+- [x] **x/wasm/src/message.rs** – transaction message structures such as `MsgStoreCode` and `MsgInstantiateContract`. Used by `abci_handler.rs` and CLI transaction commands.
 - [ ] **x/wasm/src/types/query.rs** – request and response types for contract queries. Consumed by the ABCI handler and all client interfaces.
 - [ ] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use. Acts as the entry point for `crate::types`.
 - [ ] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour. Accessed from `keeper.rs`.
