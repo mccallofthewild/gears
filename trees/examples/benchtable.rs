@@ -244,15 +244,14 @@ fn main() {
         .expect("OutputResult will always work with the BENCH_TEMPLATE");
 
     let mut file = std::fs::File::create("benchmark.md").expect("failed to create a new file");
-    file.write("# Benchmark\n".as_bytes())
-        .expect("failed to write");
-    file.write("## Small".as_bytes()).expect("failed to write");
+    file.write_all(b"# Benchmark\n").expect("failed to write");
+    file.write_all(b"## Small").expect("failed to write");
     file.write_all(small_table.as_bytes())
         .expect("failed to write");
-    file.write("## Medium".as_bytes()).expect("failed to write");
+    file.write_all(b"## Medium").expect("failed to write");
     file.write_all(medium_table.as_bytes())
         .expect("failed to write");
-    file.write("## Large".as_bytes()).expect("failed to write");
+    file.write_all(b"## Large").expect("failed to write");
     file.write_all(large_table.as_bytes())
         .expect("failed to write");
 }

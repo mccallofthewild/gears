@@ -5,8 +5,8 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
 - [x] **x/wasm/Cargo.toml** – crate manifest defining dependencies for the module. It underpins compilation of all subsequent files.
 - [x] **x/wasm/src/message.rs** – transaction message structures such as `MsgStoreCode` and `MsgInstantiateContract`. Used by `abci_handler.rs` and CLI transaction commands.
 - [x] **x/wasm/src/types/query.rs** – request and response types for contract queries. Consumed by the ABCI handler and all client interfaces.
-- [ ] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use. Acts as the entry point for `crate::types`.
-- [ ] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour. Accessed from `keeper.rs`.
+- [x] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use. Acts as the entry point for `crate::types`.
+- [x] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour. Accessed from `keeper.rs`.
 - [ ] **x/wasm/src/error.rs** – common error enum for the wasm module. Imported by the engine and keeper implementations.
 - [ ] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton. Called by the keeper to execute contracts.
 - [ ] **x/wasm/src/keeper.rs** – core keeper managing state and delegating execution to a `WasmEngine`. Relied on by genesis and the ABCI handler.

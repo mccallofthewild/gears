@@ -5,3 +5,5 @@
 //! easily interact with a chain built on Gears.
 
 pub mod query;
+
+pub use query::*;
