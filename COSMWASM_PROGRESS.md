@@ -25,10 +25,10 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
     - [x] Document pagination defaults using `PageRequest` and `PageResponse`.
   - [x] Provide unit tests for JSON and protobuf round‑trips.
 
-- [ ] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use.
-  - [ ] Re-export `query` and commonly used structs at the module root.
-    - [ ] Include rustdoc links to `wasmd` type definitions.
-  - [ ] Keep the public API stable and show example imports.
+- [x] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use.
+  - [x] Re-export `query` and commonly used structs at the module root.
+    - [x] Include rustdoc links to `wasmd` type definitions.
+  - [x] Keep the public API stable and show example imports.
 
 - [ ] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour.
   - [ ] Create the `Params` struct with fields like `code_upload_access`, `query_gas_limit` and `memory_cache_size`.

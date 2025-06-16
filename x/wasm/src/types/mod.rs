@@ -1,11 +1,22 @@
 //! Public query and metadata types for the wasm module.
 //!
-//! These mirror the structures defined in `wasmd` under
-//! [`x/wasm/types`](https://github.com/CosmWasm/wasmd/tree/main/x/wasm/types).
+//! These mirror the protobuf definitions in
+//! [`wasmd`](https://github.com/CosmWasm/wasmd/tree/main/proto/cosmwasm/wasm/v1).
 //!
-//! ````
-//! use wasm::types::QuerySmartContractState;
-//! ````
+//! # Example
+//!
+//! ```rust
+//! use wasm::types::{QuerySmartContractState, WasmQuery};
+//! # let _ = WasmQuery::SmartContractState(QuerySmartContractState {
+//! #     address: todo!("AccAddress"),
+//! #     query_data: cosmwasm_std::Binary::default(),
+//! # });
+//! ```
+//!
+//! The re-exported items here are stable and match the structures
+//! found in `wasmd`'s `query.proto`. Refer to the [`query`]
+//! module for field documentation with links to the corresponding
+//! `cosmwasm.wasm.v1` protobuf messages.
 
 pub mod query;
 
