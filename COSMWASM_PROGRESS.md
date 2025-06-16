@@ -30,10 +30,10 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
     - [x] Include rustdoc links to `wasmd` type definitions.
   - [x] Keep the public API stable and show example imports.
 
-- [ ] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour.
-  - [ ] Create the `Params` struct with fields like `code_upload_access`, `query_gas_limit` and `memory_cache_size`.
-    - [ ] Provide `Default` values mirroring the `wasmd` genesis file.
-  - [ ] Implement `WasmParamsKeeper` with `get_params`, `set_params` and `on_update`.
+- [x] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour.
+  - [x] Create the `Params` struct with fields like `code_upload_access`, `query_gas_limit` and `memory_cache_size`.
+    - [x] Provide `Default` values mirroring the `wasmd` genesis file.
+  - [x] Implement `WasmParamsKeeper` with `get_params`, `set_params` and `on_update`.
     - [ ] Notify the engine when parameters change.
   - [ ] Add CLI support for displaying and updating params.
 
