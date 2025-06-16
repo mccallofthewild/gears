@@ -10,6 +10,7 @@ use crate::application::handlers::client::{NodeFetcher, TxExecutionResult, TxHan
 use crate::commands::client::query::execute_query;
 use crate::crypto::any_key::AnyKey;
 use crate::crypto::keys::GearsPublicKey;
+#[cfg(feature = "ledger")]
 use crate::crypto::ledger::LedgerProxyKey;
 use crate::runtime::runtime;
 use crate::types::auth::fee::Fee;
@@ -91,6 +92,7 @@ impl ClientTxContext {
 /// Source to fetch keys
 #[derive(Debug, Clone)]
 pub enum Keyring {
+    #[cfg(feature = "ledger")]
     Ledger,
     Local(LocalInfo),
 }
@@ -143,6 +145,7 @@ impl From<TxExecutionResult> for RuntxResult {
 
 fn handle_key(client_tx_context: &ClientTxContext) -> anyhow::Result<AnyKey> {
     match client_tx_context.keyring {
+        #[cfg(feature = "ledger")]
         Keyring::Ledger => Ok(AnyKey::Ledger(LedgerProxyKey::new()?)),
         Keyring::Local(ref local) => {
             let keyring_home = client_tx_context

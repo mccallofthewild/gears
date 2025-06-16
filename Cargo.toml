@@ -35,10 +35,10 @@ members = [
   "x/genutil",
   "x/upgrade",
   "x/mint",
-  "x/wasm",
 
   # new unsorted
 ]
+exclude = ["x/wasm"]
 resolver = "2"
 
 [workspace.dependencies]
