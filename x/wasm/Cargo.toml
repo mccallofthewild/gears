@@ -29,6 +29,7 @@ serde = { workspace = true, default-features = false }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+log = { workspace = true }
 
 # Optional client dependencies activated via feature flags below.
 clap = { workspace = true, optional = true }

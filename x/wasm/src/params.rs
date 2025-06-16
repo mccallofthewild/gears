@@ -4,12 +4,12 @@
 // instantiation access. Additional fields like `query_gas_limit` and
 // `memory_cache_size` provide runtime tuning knobs for the `WasmEngine`.
 
-use serde::{Deserialize, Serialize};
 use gears::{
     application::keepers::params::ParamsKeeper,
     core::{errors::CoreError, Protobuf},
     params::{ParamKind, ParamsDeserialize, ParamsSerialize, ParamsSubspaceKey},
 };
+use serde::{Deserialize, Serialize};
 
 use crate::message::{AccessConfig, AccessType};
 
@@ -105,7 +105,9 @@ impl ParamsSerialize for Params {
             ),
             (
                 KEY_INSTANTIATE_DEFAULT_PERMISSION,
-                (self.instantiate_default_permission as i32).to_string().into_bytes(),
+                (self.instantiate_default_permission as i32)
+                    .to_string()
+                    .into_bytes(),
             ),
             (
                 KEY_MAX_CONTRACT_SIZE,
@@ -126,11 +128,18 @@ impl ParamsSerialize for Params {
 impl ParamsDeserialize for Params {
     fn from_raw(mut fields: std::collections::HashMap<&'static str, Vec<u8>>) -> Self {
         let code_upload_access: AccessConfig = serde_json::from_slice(
-            fields.remove(KEY_CODE_UPLOAD_ACCESS).unwrap_or_default().as_slice(),
+            fields
+                .remove(KEY_CODE_UPLOAD_ACCESS)
+                .unwrap_or_default()
+                .as_slice(),
         )
         .unwrap_or_default();
         let instantiate_default_permission = ParamKind::U64
-            .parse_param(fields.remove(KEY_INSTANTIATE_DEFAULT_PERMISSION).unwrap_or_default())
+            .parse_param(
+                fields
+                    .remove(KEY_INSTANTIATE_DEFAULT_PERMISSION)
+                    .unwrap_or_default(),
+            )
             .unsigned_64()
             .unwrap_or(0) as i32;
         let instantiate_default_permission = match instantiate_default_permission {
@@ -174,10 +183,11 @@ impl<PSK: ParamsSubspaceKey> ParamsKeeper<PSK> for WasmParamsKeeper<PSK> {
         &self.params_subspace_key
     }
 
-    #[cfg(feature = "governance")]
     fn validate(key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) -> bool {
         match std::str::from_utf8(key.as_ref()).unwrap_or_default() {
-            KEY_CODE_UPLOAD_ACCESS => serde_json::from_slice::<AccessConfig>(value.as_ref()).is_ok(),
+            KEY_CODE_UPLOAD_ACCESS => {
+                serde_json::from_slice::<AccessConfig>(value.as_ref()).is_ok()
+            }
             KEY_INSTANTIATE_DEFAULT_PERMISSION
             | KEY_MAX_CONTRACT_SIZE
             | KEY_QUERY_GAS_LIMIT
@@ -209,8 +219,7 @@ impl<PSK: ParamsSubspaceKey> WasmParamsKeeper<PSK> {
         Q: cosmwasm_vm::Querier,
     {
         if let Err(err) = engine.on_params_change(old, new) {
-            tracing::warn!("failed to notify wasm engine of param change: {err}");
+            log::warn!("failed to notify wasm engine of param change: {err}");
         }
     }
 }
-

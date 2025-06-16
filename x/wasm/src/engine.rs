@@ -1,7 +1,7 @@
 use std::{collections::HashSet, path::PathBuf, sync::RwLock};
 
 use cosmwasm_std::{Binary, Env, MessageInfo, Response};
-use cosmwasm_vm::{cache::{Cache, CacheOptions, Size}, BackendApi, Querier, Storage};
+use cosmwasm_vm::{BackendApi, Cache, CacheOptions, Querier, Size, Storage};
 
 use crate::{error::WasmError, params::Params};
 
@@ -41,7 +41,10 @@ pub trait WasmEngine<A: BackendApi, S: Storage, Q: Querier>: Send + Sync {
     fn store_code(&self, wasm: &[u8]) -> Result<cosmwasm_vm::Checksum, WasmError>;
 
     /// Run static analysis on previously stored code.
-    fn analyze_code(&self, checksum: &cosmwasm_vm::Checksum) -> Result<cosmwasm_vm::AnalysisReport, WasmError>;
+    fn analyze_code(
+        &self,
+        checksum: &cosmwasm_vm::Checksum,
+    ) -> Result<cosmwasm_vm::AnalysisReport, WasmError>;
 
     /// Notify the engine that module parameters have changed.
     fn on_params_change(&self, old: &Params, new: &Params) -> Result<(), WasmError>;
@@ -97,6 +100,17 @@ pub struct CosmwasmEngine<A: BackendApi, S: Storage, Q: Querier> {
     options: RwLock<EngineOptions>,
 }
 
+impl<A, S, Q> std::fmt::Debug for CosmwasmEngine<A, S, Q>
+where
+    A: BackendApi,
+    S: Storage,
+    Q: Querier,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CosmwasmEngine").finish()
+    }
+}
+
 impl<A, S, Q> CosmwasmEngine<A, S, Q>
 where
     A: BackendApi + 'static,
@@ -104,6 +118,7 @@ where
     Q: Querier + 'static,
 {
     /// Create a new engine with the provided options.
+    #[allow(unsafe_code)]
     pub fn new(options: EngineOptions) -> Result<Self, WasmError> {
         let cache_opts = CacheOptions::new(
             &options.base_dir,
@@ -133,7 +148,10 @@ where
             .map_err(WasmError::from)
     }
 
-    fn analyze_code(&self, checksum: &cosmwasm_vm::Checksum) -> Result<cosmwasm_vm::AnalysisReport, WasmError> {
+    fn analyze_code(
+        &self,
+        checksum: &cosmwasm_vm::Checksum,
+    ) -> Result<cosmwasm_vm::AnalysisReport, WasmError> {
         self.cache.analyze(checksum).map_err(WasmError::from)
     }
 
@@ -144,11 +162,3 @@ where
         Ok(())
     }
 }
-
-
-/// Example
-/// ```
-/// let opts = EngineOptions::default();
-/// let engine: CosmwasmEngine<MyApi, MyStorage, MyQuerier> = CosmwasmEngine::new(opts).unwrap();
-/// ```
-

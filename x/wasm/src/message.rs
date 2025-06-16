@@ -39,6 +39,15 @@ pub struct AccessConfig {
     pub addresses: Vec<AccAddress>,
 }
 
+impl Default for AccessConfig {
+    fn default() -> Self {
+        Self {
+            permission: AccessType::Unspecified,
+            addresses: Vec::new(),
+        }
+    }
+}
+
 impl AccessConfig {
     /// Basic validation used during message checks.
     pub fn validate_basic(&self) -> Result<(), anyhow::Error> {

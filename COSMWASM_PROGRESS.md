@@ -34,7 +34,7 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
   - [x] Create the `Params` struct with fields like `code_upload_access`, `query_gas_limit` and `memory_cache_size`.
     - [x] Provide `Default` values mirroring the `wasmd` genesis file.
   - [x] Implement `WasmParamsKeeper` with `get_params`, `set_params` and `on_update`.
-    - [ ] Notify the engine when parameters change.
+    - [x] Notify the engine when parameters change.
   - [ ] Add CLI support for displaying and updating params.
 
 - [x] **x/wasm/src/error.rs** – common error enum for the wasm module.
@@ -51,8 +51,8 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
   - [x] Document example usage and note possibilities for alternative engines.
 
 - [ ] **x/wasm/src/keeper.rs** – core keeper managing state and delegating execution to a `WasmEngine`.
-  - [ ] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.
-    - [ ] Provide helper functions for key derivation compatible with `wasmd`.
+  - [x] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.
+    - [x] Provide helper functions for key derivation compatible with `wasmd`.
   - [ ] Implement contract lifecycle methods (`store_code`, `instantiate`, `execute`, `query`, `migrate`, admin updates, `contracts_by_code`).
     - [ ] Integrate parameter access and gas metering with the engine.
   - [ ] Support concurrency via interior mutability and interact with bank and IBC keepers.
