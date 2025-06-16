@@ -1,6 +1,6 @@
-use crate::types::query::*;
 use cosmwasm_std::Binary;
 use gears::types::address::AccAddress;
+use wasm::types::query::*;
 
 fn sample_addr() -> AccAddress {
     AccAddress::from_bech32("cosmos1syavy2npfyt9tcncdtsdzf7kny9lh777pahuux").unwrap()

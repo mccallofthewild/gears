@@ -1,5 +1,6 @@
 //! Placeholder CosmWasm module.
 
+pub mod error;
 pub mod message;
 pub mod types;
 

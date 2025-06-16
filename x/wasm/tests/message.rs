@@ -1,8 +1,8 @@
-use crate::message::*;
 use cosmwasm_std::Binary;
 use gears::types::base::coin::UnsignedCoin;
 use gears::types::{address::AccAddress, base::coins::UnsignedCoins};
 use std::str::FromStr;
+use wasm::message::*;
 
 fn sample_addr() -> AccAddress {
     AccAddress::from_bech32("cosmos1syavy2npfyt9tcncdtsdzf7kny9lh777pahuux").unwrap()

@@ -37,11 +37,11 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
     - [ ] Notify the engine when parameters change.
   - [ ] Add CLI support for displaying and updating params.
 
-- [ ] **x/wasm/src/error.rs** – common error enum for the wasm module.
-  - [ ] Define `WasmError` variants for compile, runtime, not found, unauthorized, invalid request and internal failures.
-    - [ ] Implement `From<VmError>` and other conversions.
-  - [ ] Map variants to ABCI codes and provide `Display` messages.
-    - [ ] Unit test error mappings and logging output.
+- [x] **x/wasm/src/error.rs** – common error enum for the wasm module.
+  - [x] Define `WasmError` variants for compile, runtime, not found, unauthorized, invalid request and internal failures.
+    - [x] Implement `From<VmError>` and other conversions.
+  - [x] Map variants to ABCI codes and provide `Display` messages.
+    - [x] Unit test error mappings and logging output.
 
 - [ ] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton.
   - [ ] Specify trait methods mirroring `wasmvm` (`store_code`, `analyze_code`, `instantiate`, `execute`, `migrate`, `query`, `sudo`, `reply`, `ibc_*`).

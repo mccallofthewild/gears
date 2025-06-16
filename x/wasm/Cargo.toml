@@ -20,6 +20,7 @@ gears = { path = "../../gears", default-features = false }
 core-types = { path = "../../core-types" }
 gas = { path = "../../gas" }
 tendermint = { path = "../../tendermint" }
+tendermint-informal = { git = "https://github.com/rumos-io/tendermint-rs", branch = "v0.29.x", package = "tendermint" }
 cosmos-sdk-proto = { workspace = true }
 prost = { workspace = true }
 
