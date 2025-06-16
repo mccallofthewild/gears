@@ -2,14 +2,69 @@
 name = "wasm"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.79"
 
 [lints]
 workspace = true
 
 
 [dependencies]
-gears = { path = "../../gears" }
+# Core CosmWasm execution engine. Features are opt-in via this crate's feature
+# flags to keep the minimal footprint by default. The VM uses the Wasmer
+# singlepass backend for deterministic compilation as in `wasmd`.
+cosmwasm-vm = { version = "1.5.11", default-features = false }
+# Shared types exposed to contracts.
+cosmwasm-std = "1.5.11"
+# Local workspace crates providing foundational types and gas accounting.
+gears = { path = "../../gears", default-features = false }
+core-types = { path = "../../core-types" }
+gas = { path = "../../gas" }
+tendermint = { path = "../../tendermint" }
+cosmos-sdk-proto = { workspace = true }
+prost = { workspace = true }
+
+# Serialization and error handling utilities.
+serde = { workspace = true, default-features = false }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
 anyhow = { workspace = true }
 
+# Optional client dependencies activated via feature flags below.
+clap = { workspace = true, optional = true }
+axum = { workspace = true, optional = true }
+tonic = { workspace = true, optional = true }
+tonic-reflection = { workspace = true, optional = true }
+
 [dev-dependencies]
+# Used by integration tests to verify schema generation and to spin up
+# temporary nodes for contract execution. Test helpers from `gears` are
+# included via the `mocks` and `utils` features.
+cosmwasm-schema = "3.0.0-rc.0"
 gears = { path = "../../gears", features = ["cli", "xmods", "governance", "utils", "mocks"] }
+
+[features]
+# No functionality is enabled by default so consumers can choose a minimal set
+# of capabilities. Each optional feature maps to matching `cosmwasm-vm` features
+# or enables additional client components.
+default = []
+
+# Enable command line interface helpers under `client/cli`.
+cli = ["dep:clap"]
+
+# Build gRPC services via `client/grpc`.
+grpc = ["dep:tonic", "dep:tonic-reflection"]
+
+# Provide HTTP REST routes powered by `axum`.
+rest = ["dep:axum"]
+
+# CosmWasm VM optional capabilities mirroring `wasmvm`.
+stargate = ["cosmwasm-vm/stargate"]
+iterator = ["cosmwasm-vm/iterator"]
+IBC = ["cosmwasm-vm/stargate"]
+
+[profile.release]
+panic = "abort"
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"

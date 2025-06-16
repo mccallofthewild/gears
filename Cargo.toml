@@ -45,6 +45,7 @@ resolver = "2"
 
 # important
 ibc-proto = { branch = "v0.33",  git = "https://github.com/rumos-io/ibc-proto-rs", features = ["server", "proto-descriptor"] }
+cosmos-sdk-proto = { version = "0.27", features = ["cosmwasm", "serde"] }
 
 # nutype
 bytes = { version = "1.2.1" }
