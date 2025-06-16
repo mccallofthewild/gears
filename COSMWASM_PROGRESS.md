@@ -49,6 +49,8 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
   - [x] Handle memory limits, gas accounting and code analysis.
     - [x] Convert `VmError` into `WasmError` and guard the cache with synchronization primitives.
   - [x] Document example usage and note possibilities for alternative engines.
+  - [ ] Expand `CosmwasmEngine` execution support
+    - [ ] Implement `instantiate`, `execute` and `query` methods
 
 - [ ] **x/wasm/src/keeper.rs** – core keeper managing state and delegating execution to a `WasmEngine`.
   - [x] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.
@@ -56,6 +58,8 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
   - [ ] Implement contract lifecycle methods (`store_code`, `instantiate`, `execute`, `query`, `migrate`, admin updates, `contracts_by_code`).
     - [x] Added stubs and sequence helpers in keeper
     - [ ] Complete implementations and metadata persistence
+      - [x] `store_code` stores `CodeInfo` and reserves IDs
+      - [ ] `instantiate`, `execute`, `query`, `migrate` and admin mutations
     - [ ] Integrate parameter access and gas metering with the engine.
   - [ ] Support concurrency via interior mutability and interact with bank and IBC keepers.
 

@@ -7,8 +7,10 @@
 //!
 //! ```rust
 //! use wasm::types::{QuerySmartContractState, WasmQuery};
+//! # use gears::types::address::AccAddress;
+//! # let addr = AccAddress::try_from([0u8; 20].as_slice()).unwrap();
 //! # let _ = WasmQuery::SmartContractState(QuerySmartContractState {
-//! #     address: todo!("AccAddress"),
+//! #     address: addr,
 //! #     query_data: cosmwasm_std::Binary::default(),
 //! # });
 //! ```

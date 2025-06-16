@@ -72,10 +72,14 @@ fn next_sequence<DB: Database, SKT: StoreKey, CTX: TransactionalContext<DB, SKT>
 
 /// Keeper managing wasm bytecode and contract state.
 #[derive(Debug, Clone)]
-pub struct Keeper<SK, PSK, E>
+pub struct Keeper<SK, PSK, E, A, S, Q>
 where
     SK: StoreKey,
     PSK: ParamsSubspaceKey,
+    A: cosmwasm_vm::BackendApi,
+    S: cosmwasm_vm::Storage,
+    Q: cosmwasm_vm::Querier,
+    E: crate::engine::WasmEngine<A, S, Q>,
 {
     #[allow(dead_code)]
     store_key: SK,
@@ -83,14 +87,17 @@ where
     params: WasmParamsKeeper<PSK>,
     #[allow(dead_code)]
     engine: E,
-    _pd: PhantomData<fn() -> SK>,
+    _pd: PhantomData<fn() -> (SK, A, S, Q)>,
 }
 
-impl<SK, PSK, E> Keeper<SK, PSK, E>
+impl<SK, PSK, E, A, S, Q> Keeper<SK, PSK, E, A, S, Q>
 where
     SK: StoreKey,
     PSK: ParamsSubspaceKey,
-    E: Send + Sync,
+    A: cosmwasm_vm::BackendApi,
+    S: cosmwasm_vm::Storage,
+    Q: cosmwasm_vm::Querier,
+    E: crate::engine::WasmEngine<A, S, Q> + Send + Sync,
 {
     /// Create a new keeper instance bound to a store key and execution engine.
     pub fn new(store_key: SK, params_subspace_key: PSK, engine: E) -> Self {
@@ -127,18 +134,54 @@ where
     pub fn store_code<DB: Database, CTX: TransactionalContext<DB, SK>>(
         &self,
         ctx: &mut CTX,
-        _sender: &gears::types::address::AccAddress,
-        _wasm: &[u8],
-        _permission: Option<AccessConfig>,
+        sender: &gears::types::address::AccAddress,
+        wasm: &[u8],
+        permission: Option<AccessConfig>,
     ) -> Result<u64, WasmError> {
-        // <COSMWASM_PROGRESS.md#L56-L58>
-        let _id = next_sequence(ctx, &self.store_key, KEY_SEQ_CODE_ID).map_err(|e| {
+        // <COSMWASM_PROGRESS.md#L56-L62>
+        // ensure uploaded code size respects the current parameter limits
+        let params = self.params.try_get(ctx).map_err(|e| WasmError::Internal {
+            reason: e.to_string(),
+        })?;
+        if wasm.len() as u64 > params.max_contract_size {
+            return Err(WasmError::InvalidRequest {
+                reason: "wasm bytecode too large".into(),
+            });
+        }
+
+        // persist the wasm via the execution engine to obtain its checksum
+        let checksum = self.engine.store_code(wasm)?;
+        // analyze code so we can record required capabilities (ignored result)
+        let _ = self.engine.analyze_code(&checksum);
+
+        // reserve a new code id and store metadata
+        let code_id = next_sequence(ctx, &self.store_key, KEY_SEQ_CODE_ID).map_err(|e| {
             WasmError::Internal {
                 reason: e.to_string(),
             }
         })?;
-        // TODO: store bytes, update code index and call the engine
-        todo!("store_code not yet implemented; id reserved")
+
+        // determine instantiate permissions
+        let instantiate_cfg = permission.unwrap_or(AccessConfig {
+            permission: params.instantiate_default_permission,
+            addresses: Vec::new(),
+        });
+
+        let info = cosmos_sdk_proto::cosmwasm::wasm::v1::CodeInfo {
+            code_hash: Vec::from(checksum),
+            creator: sender.to_string(),
+            instantiate_config: Some(instantiate_cfg.into()),
+        };
+        let mut buf = Vec::new();
+        prost::Message::encode(&info, &mut buf).expect("encode CodeInfo");
+        let mut store = ctx.kv_store_mut(&self.store_key);
+        store
+            .set(code_key(code_id), buf)
+            .map_err(|e| WasmError::Internal {
+                reason: e.to_string(),
+            })?;
+
+        Ok(code_id)
     }
 
     /// Instantiate a stored contract.
@@ -153,7 +196,7 @@ where
         _msg: Binary,
         _funds: gears::types::base::coins::UnsignedCoins,
     ) -> Result<gears::types::address::AccAddress, WasmError> {
-        // <COSMWASM_PROGRESS.md#L56-L58>
+        // <COSMWASM_PROGRESS.md#L56-L62>
         todo!("instantiate not yet implemented")
     }
 
@@ -166,7 +209,7 @@ where
         _msg: Binary,
         _funds: gears::types::base::coins::UnsignedCoins,
     ) -> Result<Response, WasmError> {
-        // <COSMWASM_PROGRESS.md#L56-L58>
+        // <COSMWASM_PROGRESS.md#L56-L62>
         todo!("execute not yet implemented")
     }
 
@@ -177,7 +220,7 @@ where
         _contract: &gears::types::address::AccAddress,
         _msg: Binary,
     ) -> Result<Binary, WasmError> {
-        // <COSMWASM_PROGRESS.md#L56-L58>
+        // <COSMWASM_PROGRESS.md#L56-L62>
         todo!("query not yet implemented")
     }
 }

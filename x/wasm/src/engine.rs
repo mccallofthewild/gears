@@ -61,6 +61,7 @@ pub trait WasmEngine<A: BackendApi, S: Storage, Q: Querier>: Send + Sync {
         _querier: Q,
         _gas_limit: u64,
     ) -> Result<Response, WasmError> {
+        // <COSMWASM_PROGRESS.md#L52-L53>
         todo!("instantiate not yet implemented")
     }
 
@@ -76,6 +77,7 @@ pub trait WasmEngine<A: BackendApi, S: Storage, Q: Querier>: Send + Sync {
         _querier: Q,
         _gas_limit: u64,
     ) -> Result<Response, WasmError> {
+        // <COSMWASM_PROGRESS.md#L52-L53>
         todo!("execute not yet implemented")
     }
 
@@ -90,6 +92,7 @@ pub trait WasmEngine<A: BackendApi, S: Storage, Q: Querier>: Send + Sync {
         _querier: Q,
         _gas_limit: u64,
     ) -> Result<Binary, WasmError> {
+        // <COSMWASM_PROGRESS.md#L52-L53>
         todo!("query not yet implemented")
     }
 }
