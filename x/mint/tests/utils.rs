@@ -75,6 +75,7 @@ impl ModuleInfo for MintModuleInfo {
 pub fn set_node(
     bank_mock: Option<MockBankKeeper>,
     staking_mock: Option<MockStakingKeeper>,
+    blocks_per_year: Option<u32>,
 ) -> MockNode<
     BaseApp<
         MemDB,
@@ -102,14 +103,19 @@ pub fn set_node(
         SubspaceKey::Mint,
     );
 
+    let mut genesis = MintGenesis::default();
+    if let Some(bpy) = blocks_per_year {
+        genesis.params.blocks_per_year = bpy;
+    }
+
     let opt = MockOptions::<
         SubspaceKey,
         MintAbciHandler<_, _, _, _, _, MintModuleInfo>,
         MintGenesis,
     >::former()
-    .abci_handler(handler)
-    .baseapp_sbs_key(SubspaceKey::BaseApp)
-    .genesis(GenesisSource::Default);
+        .abci_handler(handler)
+        .baseapp_sbs_key(SubspaceKey::BaseApp)
+        .genesis(GenesisSource::Genesis(genesis));
 
     init_node(opt)
 }

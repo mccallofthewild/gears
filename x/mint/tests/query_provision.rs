@@ -7,12 +7,7 @@ use gears::{
     core::Protobuf,
     extensions::{lock::AcquireRwLock, testing::UnwrapTesting},
     tendermint::types::{
-        request::query::RequestQuery,
-        response::ResponseQuery,
-        time::{
-            duration::Duration,
-            timestamp::{Timestamp, TimestampSeconds},
-        },
+        request::query::RequestQuery, response::ResponseQuery, time::timestamp::Timestamp,
     },
     types::{base::coin::UnsignedCoin, decimal256::Decimal256, uint::Uint256},
 };
@@ -21,12 +16,14 @@ use mint::types::query::{
 };
 use utils::{set_node, MockBankKeeper, MockStakingKeeper};
 
+const TEST_BLOCKS_PER_YEAR: u32 = 60;
+
 #[path = "./utils.rs"]
 mod utils;
 
 #[test]
 fn query_provision_after_init_without_tokens() {
-    let mut node = set_node(None, None);
+    let mut node = set_node(None, None, Some(TEST_BLOCKS_PER_YEAR));
 
     let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
 
@@ -56,6 +53,7 @@ fn query_provision_after_init() {
         Some(MockStakingKeeper::new(Decimal256::new(Uint256::from(
             1000000000_u64,
         )))),
+        Some(TEST_BLOCKS_PER_YEAR),
     );
 
     let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
@@ -78,15 +76,10 @@ fn query_provision_after_init() {
 
 #[test]
 fn query_provision_after_month_without_staking() {
-    let mut node = set_node(None, None);
+    let mut node = set_node(None, None, Some(TEST_BLOCKS_PER_YEAR));
 
-    let mut timestamp = Timestamp::UNIX_EPOCH;
-    while timestamp.timestamp_seconds() <= TimestampSeconds::try_from(2_628_000).unwrap_test() {
-        let _ = node.step(vec![], timestamp);
-
-        timestamp = timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test();
+    for _ in 0..(TEST_BLOCKS_PER_YEAR / 12) {
+        let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
     }
 
     let q = QueryAnnualProvisionsRequest {};
@@ -120,15 +113,11 @@ fn query_provision_after_month_with_not_change_to_tokens() {
         Some(MockStakingKeeper {
             total_bonded_tokens: total_bonded_tokens.clone(),
         }),
+        Some(TEST_BLOCKS_PER_YEAR),
     );
 
-    let mut timestamp = Timestamp::UNIX_EPOCH;
-    while timestamp.timestamp_seconds() <= TimestampSeconds::try_from(2_628_000).unwrap_test() {
-        let _ = node.step(vec![], timestamp);
-
-        timestamp = timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test();
+    for _ in 0..(TEST_BLOCKS_PER_YEAR / 12) {
+        let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
     }
 
     let q = QueryAnnualProvisionsRequest {};
@@ -162,15 +151,11 @@ fn query_provision_after_month_with_increase_of_supply() {
         Some(MockStakingKeeper {
             total_bonded_tokens: total_bonded_tokens.clone(),
         }),
+        Some(TEST_BLOCKS_PER_YEAR),
     );
 
-    let mut timestamp = Timestamp::UNIX_EPOCH;
-    while timestamp.timestamp_seconds() <= TimestampSeconds::try_from(2_628_000).unwrap_test() {
-        let _ = node.step(vec![], timestamp);
-
-        timestamp = timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test();
+    for _ in 0..(TEST_BLOCKS_PER_YEAR / 12) {
+        let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
     }
 
     if let Some(supply) = &mut *total_supply.acquire_write() {
@@ -180,12 +165,7 @@ fn query_provision_after_month_with_increase_of_supply() {
             .unwrap_test();
     };
 
-    let _ = node.step(
-        vec![],
-        timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test(),
-    );
+    let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
 
     let q = QueryAnnualProvisionsRequest {};
     let ResponseQuery { value, .. } = node.query(RequestQuery {
@@ -218,15 +198,11 @@ fn query_provision_after_month_with_increase_of_bound() {
         Some(MockStakingKeeper {
             total_bonded_tokens: total_bonded_tokens.clone(),
         }),
+        Some(TEST_BLOCKS_PER_YEAR),
     );
 
-    let mut timestamp = Timestamp::UNIX_EPOCH;
-    while timestamp.timestamp_seconds() <= TimestampSeconds::try_from(2_628_000).unwrap_test() {
-        let _ = node.step(vec![], timestamp);
-
-        timestamp = timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test();
+    for _ in 0..(TEST_BLOCKS_PER_YEAR / 12) {
+        let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
     }
 
     {
@@ -236,12 +212,7 @@ fn query_provision_after_month_with_increase_of_bound() {
             .unwrap_test();
     }
 
-    let _ = node.step(
-        vec![],
-        timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test(),
-    );
+    let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
 
     let q = QueryAnnualProvisionsRequest {};
     let ResponseQuery { value, .. } = node.query(RequestQuery {

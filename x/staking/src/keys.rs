@@ -6,7 +6,6 @@ use gears::{
 
 /// Returns a key prefix for indexing a redelegation
 /// from an address to a destination validator.
-
 pub fn redelegations_by_delegator_to_validator_destination_index_key(
     dst_val_addr: &ValAddress,
     delegator_addr: &AccAddress,

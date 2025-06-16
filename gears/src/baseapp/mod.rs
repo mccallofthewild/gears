@@ -22,7 +22,7 @@ use kv_store::{
     query::QueryMultiStore,
 };
 use mode::build_tx_gas_meter;
-use sha2::{Digest, Sha256};
+use sha2::Digest;
 use tendermint::types::{
     chain_id::ChainId,
     proto::{event::Event, header::Header},

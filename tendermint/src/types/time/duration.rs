@@ -326,7 +326,6 @@ pub mod inner {
 
 #[cfg(test)]
 mod tests {
-    use std::i32;
 
     use extensions::testing::UnwrapTesting;
 

@@ -156,7 +156,7 @@ impl GaiaNode {
                 ctx: ClientTxContext::new_online(
                     self.tendermint.home(),
                     200_000_u32.into(),
-                    self.rpc_addr.clone().try_into().expect("invalid addr"),
+                    self.rpc_addr.clone(),
                     self.tendermint.chain_id.clone(),
                     key,
                 ),

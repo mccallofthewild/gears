@@ -84,6 +84,7 @@ pub trait RouterBuilder<QReq, QRes> {
 /// Start your node
 ///
 /// *Note*: tendermint should be started manually
+#[allow(clippy::result_large_err)]
 pub fn run<
     DB: Database,
     DBO: DatabaseBuilder<DB>,

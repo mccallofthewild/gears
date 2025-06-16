@@ -10,6 +10,7 @@ pub struct HttpClient {
     inner: TendermintHttpClient,
 }
 impl HttpClient {
+    #[allow(clippy::result_large_err)]
     pub fn new<U>(url: U) -> Result<Self, Error>
     where
         U: TryInto<HttpClientUrl, Error = Error>,
@@ -18,6 +19,7 @@ impl HttpClient {
         Ok(Self { inner: client })
     }
 
+    #[allow(clippy::result_large_err)]
     pub fn new_with_proxy<U, P>(url: U, proxy_url: P) -> Result<Self, Error>
     where
         U: TryInto<HttpClientUrl, Error = Error>,

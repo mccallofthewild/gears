@@ -2965,8 +2965,9 @@ mod tests {
     /// - left node value is less than this node's value
     /// - right node value is greater than or equal to this node's value
     /// - checks height and size values are correct
+    ///
     /// Returns:
-    /// - whether the tree is consistent
+    ///   - whether the tree is consistent
     fn is_consistent<T: Database, N>(root: N, node_db: &NodeDB<T>) -> bool
     where
         N: AsRef<Node>,
@@ -2980,10 +2981,11 @@ mod tests {
     /// - left node value is less than this node's value
     /// - right node value is greater than or equal to this node's value
     /// - checks height and size values are correct
+    ///
     /// Returns:
-    /// - whether the tree is consistent
-    /// - the depth of the tree
-    /// - the size of the tree
+    ///   - whether the tree is consistent
+    ///   - the depth of the tree
+    ///   - the size of the tree
     fn recursive_is_consistent<T: Database, N>(root: N, node_db: &NodeDB<T>) -> (bool, u64, u64)
     where
         N: AsRef<Node>,

@@ -7,24 +7,21 @@ use gears::{
     core::Protobuf,
     extensions::{lock::AcquireRwLock, testing::UnwrapTesting},
     tendermint::types::{
-        request::query::RequestQuery,
-        response::ResponseQuery,
-        time::{
-            duration::Duration,
-            timestamp::{Timestamp, TimestampSeconds},
-        },
+        request::query::RequestQuery, response::ResponseQuery, time::timestamp::Timestamp,
     },
     types::{base::coin::UnsignedCoin, decimal256::Decimal256, uint::Uint256},
 };
 use mint::types::query::{request::QueryInflationRequest, response::QueryInflationResponse};
 use utils::{set_node, MockBankKeeper, MockStakingKeeper};
 
+const TEST_BLOCKS_PER_YEAR: u32 = 60;
+
 #[path = "./utils.rs"]
 mod utils;
 
 #[test]
 fn query_inflation_after_init_without_staking_supply() {
-    let mut node = set_node(None, None);
+    let mut node = set_node(None, None, Some(TEST_BLOCKS_PER_YEAR));
 
     let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
 
@@ -54,6 +51,7 @@ fn query_inflation_after_init() {
         Some(MockStakingKeeper::new(Decimal256::new(Uint256::from(
             1000000000_u64,
         )))),
+        Some(TEST_BLOCKS_PER_YEAR),
     );
 
     let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
@@ -76,16 +74,11 @@ fn query_inflation_after_init() {
 
 #[test]
 fn query_inflation_after_month_without_staking_supply() {
-    let mut node = set_node(None, None);
+    let mut node = set_node(None, None, Some(TEST_BLOCKS_PER_YEAR));
 
-    // Well. I simulate chain which runs for month and each block takes 5 seconds
-    let mut timestamp = Timestamp::UNIX_EPOCH;
-    while timestamp.timestamp_seconds() <= TimestampSeconds::try_from(2_628_000).unwrap_test() {
-        let _ = node.step(vec![], timestamp);
-
-        timestamp = timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test();
+    // Simulate blocks for a month worth of inflation
+    for _ in 0..(TEST_BLOCKS_PER_YEAR / 12) {
+        let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
     }
 
     let q = QueryInflationRequest {};
@@ -118,16 +111,12 @@ fn query_inflation_after_month() {
         Some(MockStakingKeeper::new(Decimal256::new(Uint256::from(
             1000000000_u64,
         )))),
+        Some(TEST_BLOCKS_PER_YEAR),
     );
 
-    // Well. I simulate chain which runs for month and each block takes 5 seconds
-    let mut timestamp = Timestamp::UNIX_EPOCH;
-    while timestamp.timestamp_seconds() < TimestampSeconds::try_from(2_628_000).unwrap_test() {
-        let _ = node.step(vec![], timestamp);
-
-        timestamp = timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test();
+    // Simulate blocks for a month worth of inflation
+    for _ in 0..(TEST_BLOCKS_PER_YEAR / 12) {
+        let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
     }
 
     if let Some(supply) = &mut *total_supply.acquire_write() {
@@ -137,12 +126,7 @@ fn query_inflation_after_month() {
             .unwrap_test();
     };
 
-    let _ = node.step(
-        vec![],
-        timestamp
-            .checked_add(Duration::new_from_secs(5))
-            .unwrap_test(),
-    );
+    let _ = node.step(vec![], Timestamp::UNIX_EPOCH);
 
     let q = QueryInflationRequest {};
     let ResponseQuery { value, .. } = node.query(RequestQuery {

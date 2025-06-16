@@ -1,3 +1,4 @@
+#![allow(clippy::useless_conversion)]
 use super::TxMessage;
 use core_types::any::google::Any;
 use core_types::errors::CoreError;

@@ -294,7 +294,6 @@ fn parse_proposal_key_bytes(bytes: impl AsRef<[u8]>) -> (u64, DateTime<Utc>) {
             .round_subsecs(0)
             .format(SORTABLE_DATE_TIME_FORMAT)
             .to_string()
-            .bytes()
             .len()
     });
 

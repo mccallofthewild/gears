@@ -205,7 +205,7 @@ impl<M: TxMessage> Tx<M> {
             payer
         } else {
             // At least one signer exists due to Ante::validate_basic_ante_handler()
-            return self.get_signers()[0];
+            self.get_signers()[0]
         }
     }
 

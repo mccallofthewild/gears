@@ -220,7 +220,7 @@ pub trait StakingBankKeeper<SK: StoreKey, M: Module>:
     /// delegator account to a module account. It creates the module accounts if it don't exist.
     /// It's safe operation because the modules are app generic parameter
     /// which cannot be added in runtime.
-
+    ///
     /// Method undelegates the unbonding coins and transfers
     /// them from a module account to the delegator account.
     fn undelegate_coins_from_module_to_account<DB: Database, CTX: TransactionalContext<DB, SK>>(
