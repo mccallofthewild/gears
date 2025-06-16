@@ -6,23 +6,10 @@ edition = "2021"
 [lints]
 workspace = true
 
+
 [dependencies]
-# Local dependency on gears with features required for modules and CLI integration
-gears = { path = "../../gears", features = ["cli", "xmods", "governance"] }
-
-# CosmWasm execution engine
-cosmwasm-vm = { version = "1", default-features = false, features = ["iterator", "staking"] }
-cosmwasm-std = { version = "1", default-features = false }
-
-# Utilities
+gears = { path = "../../gears" }
 anyhow = { workspace = true }
-thiserror = { workspace = true }
-serde = { workspace = true, default-features = false }
-serde_json = { workspace = true }
-clap = { workspace = true }
-tracing = { workspace = true }
-axum = { workspace = true }
-tonic = { workspace = true }
 
 [dev-dependencies]
 gears = { path = "../../gears", features = ["cli", "xmods", "governance", "utils", "mocks"] }
