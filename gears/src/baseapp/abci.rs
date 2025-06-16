@@ -144,7 +144,7 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
         } = &mut state.check_mode;
 
         let result = match r#type {
-            0 | 1 => self.run_tx::<CheckTxMode<_, _>>(tx.clone(), multi_store, block_gas_meter),
+            0 | 1 => self.run_tx::<CheckTxMode<_, _>>(tx.clone(), 0, multi_store, block_gas_meter),
             _ => panic!("unknown Request CheckTx type: {}", r#type),
         };
 
@@ -196,7 +196,10 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
             multi_store,
         } = &mut state.deliver_mode;
 
-        let result = self.run_tx::<DeliverTxMode<_, _>>(tx.clone(), multi_store, block_gas_meter);
+        let tx_index = state.tx_index;
+        let result =
+            self.run_tx::<DeliverTxMode<_, _>>(tx.clone(), tx_index, multi_store, block_gas_meter);
+        state.tx_index += 1;
 
         match result {
             Ok(RunTxInfo {
@@ -261,6 +264,7 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
         self.set_block_header(request.header.clone());
 
         let mut state = self.state.write().expect(POISONED_LOCK);
+        state.tx_index = 0;
         let mut multi_store = self.multi_store.write().expect(POISONED_LOCK);
 
         let ctx = SimpleContext::new(

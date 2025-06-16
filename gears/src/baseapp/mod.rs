@@ -22,6 +22,7 @@ use kv_store::{
     query::QueryMultiStore,
 };
 use mode::build_tx_gas_meter;
+use sha2::{Digest, Sha256};
 use tendermint::types::{
     chain_id::ChainId,
     proto::{event::Event, header::Header},
@@ -44,6 +45,11 @@ pub use params::{
 };
 
 pub use query::*;
+
+/// Helper trait for retrieving the latest committed block height from a node.
+pub trait LatestHeight {
+    fn latest_height(&self) -> u32;
+}
 
 /// Core ABCI application which stores all data needed to execute application
 #[derive(Debug, Clone)]
@@ -106,6 +112,11 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
         *current_header = header;
     }
 
+    /// Returns the latest committed block height known to the application.
+    pub fn current_height(&self) -> u32 {
+        self.multi_store.read().expect(POISONED_LOCK).head_version()
+    }
+
     fn run_query(&self, request: &RequestQuery) -> Result<Bytes, QueryError> {
         //TODO: request height u32
         let version = NonZero::new(
@@ -130,6 +141,7 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
     fn run_tx<MD: ExecutionMode<DB, H>>(
         &self,
         raw: Bytes,
+        tx_index: u32,
         multi_store: &mut TransactionMultiBank<DB, H::StoreKey>,
         gas_meter: &mut GasMeter<BlockKind>,
     ) -> Result<RunTxInfo, RunTxError> {
@@ -137,6 +149,7 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
             TxWithRaw::from_bytes(raw.clone()).map_err(|e: core_types::errors::CoreError| {
                 RunTxError::InvalidTransaction(e.to_string())
             })?;
+        let tx_hash: [u8; 32] = sha2::Sha256::digest(raw.as_ref()).into();
 
         let header = self.get_block_header();
         let height = header.height;
@@ -158,6 +171,8 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
             build_tx_gas_meter(height, Some(&tx_with_raw.tx.auth_info.fee)),
             gas_meter,
             self.options.clone(),
+            tx_index,
+            tx_hash,
         );
 
         MD::runnable(&mut ctx)?;
@@ -199,4 +214,12 @@ pub struct RunTxInfo {
     pub events: Vec<Event>,
     pub gas_wanted: Gas,
     pub gas_used: FiniteGas,
+}
+
+impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo> LatestHeight
+    for BaseApp<DB, PSK, H, AI>
+{
+    fn latest_height(&self) -> u32 {
+        self.current_height()
+    }
 }

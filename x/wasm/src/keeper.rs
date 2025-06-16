@@ -12,6 +12,7 @@
 use crate::{engine::WasmEngine, error::WasmError, params::WasmParamsKeeper};
 use address::AccAddress;
 use bytes::Bytes;
+use cosmwasm_std::Timestamp;
 use gears::{
     context::{QueryableContext, TransactionalContext},
     core::Protobuf,
@@ -134,13 +135,22 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
         &mut self,
         ctx: &mut CTX,
         code_id: u64,
+        sender: &AccAddress,
+        funds: &[cosmwasm_std::Coin],
         msg: &[u8],
     ) -> Result<(AccAddress, Vec<u8>), WasmError> {
         let addr_id = next_contract_id(&self.store_key, ctx)?;
         let raw_addr = contract_address(addr_id);
         let addr =
             AccAddress::try_from(raw_addr.clone()).map_err(|e| WasmError::Keeper(e.to_string()))?;
-        let resp = self.engine.instantiate(code_id, msg)?;
+        self.engine.set_block_height(ctx.height() as u64);
+        self.engine.set_block_time(ctx.get_time());
+        self.engine.set_chain_id(ctx.chain_id().to_string());
+        self.engine.set_transaction(ctx.tx_index(), &ctx.tx_hash());
+        let resp = self
+            .engine
+            .instantiate(code_id, sender.as_ref(), &raw_addr, funds, msg)?;
+        self.engine.clear_transaction();
         ctx.kv_store_mut(&self.store_key)
             .set(contract_key(&addr), code_id.encode_vec())?;
         Ok((addr, resp))
@@ -155,6 +165,8 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
         &mut self,
         ctx: &mut CTX,
         addr: &AccAddress,
+        sender: &AccAddress,
+        funds: &[cosmwasm_std::Coin],
         msg: &[u8],
     ) -> Result<Vec<u8>, WasmError> {
         // ensure the contract exists
@@ -165,7 +177,16 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
         {
             return Err(WasmError::Keeper("unknown contract".into()));
         }
-        self.engine.execute(addr.as_ref(), msg).map_err(Into::into)
+        self.engine.set_block_height(ctx.height() as u64);
+        self.engine.set_block_time(ctx.get_time());
+        self.engine.set_chain_id(ctx.chain_id().to_string());
+        self.engine.set_transaction(ctx.tx_index(), &ctx.tx_hash());
+        let res = self
+            .engine
+            .execute(addr.as_ref(), sender.as_ref(), funds, msg)
+            .map_err(Into::into)?;
+        self.engine.clear_transaction();
+        Ok(res)
     }
 
     /// Run a read-only query against a contract.
@@ -185,6 +206,11 @@ impl<SK: StoreKey, PSK: ParamsSubspaceKey, E: WasmEngine> Keeper<SK, PSK, E> {
         {
             return Err(WasmError::Keeper("unknown contract".into()));
         }
+        self.engine.set_block_height(ctx.height() as u64);
+        self.engine.set_chain_id(ctx.chain_id().to_string());
+        // QueryContext does not provide timestamp information yet.
+        self.engine.set_block_time(Timestamp::from_seconds(0));
+        self.engine.clear_transaction();
         self.engine.query(addr.as_ref(), msg).map_err(Into::into)
     }
 }

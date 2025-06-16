@@ -24,8 +24,8 @@
 //! This file only defines the trait and a skeletal struct. Implementation will
 //! follow the design laid out in `COSMWASM_ADR.md` and `COSMWASM_PRD.md`.
 use cosmwasm_std::{
-    testing::{mock_env, mock_info},
-    to_json_vec,
+    to_json_vec, Addr, Binary, BlockInfo, ContractInfo, Env, MessageInfo, Timestamp,
+    TransactionInfo,
 };
 use cosmwasm_vm::{
     backend::{Backend, BackendApi, Querier, Storage},
@@ -53,6 +53,23 @@ pub trait WasmEngine {
     /// module in its cache.
     fn store_code(&mut self, code_id: u64, wasm: &[u8]) -> Result<(), VmError>;
 
+    /// Set the current block height which will be injected into the
+    /// [`Env`](cosmwasm_std::Env) when executing contracts.
+    fn set_block_height(&mut self, height: u64);
+
+    /// Set the current block timestamp which will be injected into the
+    /// [`Env`](cosmwasm_std::Env) when executing contracts.
+    fn set_block_time(&mut self, time: Timestamp);
+
+    /// Set the chain identifier used in the execution environment.
+    fn set_chain_id(&mut self, chain_id: String);
+
+    /// Set the transaction info used in the execution environment.
+    fn set_transaction(&mut self, index: u32, hash: &[u8]);
+
+    /// Clear any transaction info from the environment.
+    fn clear_transaction(&mut self);
+
     /// Instantiates a contract from previously stored code.
     ///
     /// Modeled after [`VM.Instantiate`](https://github.com/CosmWasm/wasmvm/blob/main/lib_libwasmvm.go#L147-L188).
@@ -60,7 +77,14 @@ pub trait WasmEngine {
     /// create an [`Instance`](https://github.com/CosmWasm/cosmwasm/blob/main/packages/vm/src/instance.rs)
     /// with a concrete backend and call `instantiate` with the provided message.
     /// The call returns the raw binary response from the contract.
-    fn instantiate(&mut self, code_id: u64, msg: &[u8]) -> Result<Vec<u8>, VmError>;
+    fn instantiate(
+        &mut self,
+        code_id: u64,
+        sender: &[u8],
+        contract_addr: &[u8],
+        funds: &[cosmwasm_std::Coin],
+        msg: &[u8],
+    ) -> Result<Vec<u8>, VmError>;
 
     /// Executes a contract call.
     ///
@@ -69,7 +93,13 @@ pub trait WasmEngine {
     /// It should prepare an execution environment for the given contract
     /// address, load the instance from the cache and invoke the `execute`
     /// export. The return value is the serialized contract response.
-    fn execute(&mut self, contract_addr: &[u8], msg: &[u8]) -> Result<Vec<u8>, VmError>;
+    fn execute(
+        &mut self,
+        contract_addr: &[u8],
+        sender: &[u8],
+        funds: &[cosmwasm_std::Coin],
+        msg: &[u8],
+    ) -> Result<Vec<u8>, VmError>;
 
     /// Runs a read-only query against a contract.
     ///
@@ -96,6 +126,14 @@ where
     pub cache: Cache<A, S, Q>,
     /// Mapping from numeric IDs to checksums.
     code_map: HashMap<u64, Checksum>,
+    /// Current block height injected into the execution environment.
+    block_height: u64,
+    /// Current block timestamp injected into the execution environment.
+    block_time: Timestamp,
+    /// Chain identifier used for building the execution environment.
+    chain_id: String,
+    /// Transaction info injected into the execution environment.
+    tx_info: Option<TransactionInfo>,
 }
 
 fn id_from_contract_addr(addr: &[u8]) -> Option<u64> {
@@ -124,6 +162,10 @@ where
         Ok(Self {
             cache: Cache::new(options)?,
             code_map: HashMap::new(),
+            block_height: 0,
+            block_time: Timestamp::from_seconds(0),
+            chain_id: String::new(),
+            tx_info: None,
         })
     }
 }
@@ -146,7 +188,34 @@ where
         Ok(())
     }
 
-    fn instantiate(&mut self, code_id: u64, msg: &[u8]) -> Result<Vec<u8>, VmError> {
+    fn set_block_height(&mut self, height: u64) {
+        self.block_height = height;
+    }
+
+    fn set_block_time(&mut self, time: Timestamp) {
+        self.block_time = time;
+    }
+
+    fn set_chain_id(&mut self, chain_id: String) {
+        self.chain_id = chain_id;
+    }
+
+    fn set_transaction(&mut self, index: u32, hash: &[u8]) {
+        self.tx_info = Some(TransactionInfo::new(index, Binary::from(hash)));
+    }
+
+    fn clear_transaction(&mut self) {
+        self.tx_info = None;
+    }
+
+    fn instantiate(
+        &mut self,
+        code_id: u64,
+        sender: &[u8],
+        contract_addr: &[u8],
+        funds: &[cosmwasm_std::Coin],
+        msg: &[u8],
+    ) -> Result<Vec<u8>, VmError> {
         let checksum = self
             .code_map
             .get(&code_id)
@@ -165,14 +234,34 @@ where
 
         let mut instance = self.cache.get_instance(checksum, backend, options)?;
 
-        let env = to_json_vec(&mock_env()).map_err(|e| VmError::serialize_err("Env", e))?;
-        let info = to_json_vec(&mock_info("creator", &[]))
-            .map_err(|e| VmError::serialize_err("Info", e))?;
+        let env = Env {
+            block: BlockInfo {
+                height: self.block_height,
+                time: self.block_time,
+                chain_id: self.chain_id.clone(),
+            },
+            transaction: self.tx_info.clone(),
+            contract: ContractInfo {
+                address: Addr::unchecked(String::from_utf8_lossy(contract_addr)),
+            },
+        };
+        let env = to_json_vec(&env).map_err(|e| VmError::serialize_err("Env", e))?;
+        let info = MessageInfo {
+            sender: Addr::unchecked(String::from_utf8_lossy(sender)),
+            funds: funds.to_vec(),
+        };
+        let info = to_json_vec(&info).map_err(|e| VmError::serialize_err("Info", e))?;
 
         call_instantiate_raw(&mut instance, &env, &info, msg)
     }
 
-    fn execute(&mut self, contract_addr: &[u8], msg: &[u8]) -> Result<Vec<u8>, VmError> {
+    fn execute(
+        &mut self,
+        contract_addr: &[u8],
+        sender: &[u8],
+        funds: &[cosmwasm_std::Coin],
+        msg: &[u8],
+    ) -> Result<Vec<u8>, VmError> {
         let contract_id = id_from_contract_addr(contract_addr)
             .ok_or_else(|| VmError::cache_err("malformed contract address"))?;
         let checksum = self
@@ -190,9 +279,23 @@ where
             print_debug: false,
         };
         let mut instance = self.cache.get_instance(checksum, backend, options)?;
-        let env = to_json_vec(&mock_env()).map_err(|e| VmError::serialize_err("Env", e))?;
-        let info = to_json_vec(&mock_info("caller", &[]))
-            .map_err(|e| VmError::serialize_err("Info", e))?;
+        let env = Env {
+            block: BlockInfo {
+                height: self.block_height,
+                time: self.block_time,
+                chain_id: self.chain_id.clone(),
+            },
+            transaction: self.tx_info.clone(),
+            contract: ContractInfo {
+                address: Addr::unchecked(String::from_utf8_lossy(contract_addr)),
+            },
+        };
+        let env = to_json_vec(&env).map_err(|e| VmError::serialize_err("Env", e))?;
+        let info = MessageInfo {
+            sender: Addr::unchecked(String::from_utf8_lossy(sender)),
+            funds: funds.to_vec(),
+        };
+        let info = to_json_vec(&info).map_err(|e| VmError::serialize_err("Info", e))?;
         call_execute_raw(&mut instance, &env, &info, msg)
     }
 
@@ -214,7 +317,18 @@ where
             print_debug: false,
         };
         let mut instance = self.cache.get_instance(checksum, backend, options)?;
-        let env = to_json_vec(&mock_env()).map_err(|e| VmError::serialize_err("Env", e))?;
+        let env = Env {
+            block: BlockInfo {
+                height: self.block_height,
+                time: self.block_time,
+                chain_id: self.chain_id.clone(),
+            },
+            transaction: self.tx_info.clone(),
+            contract: ContractInfo {
+                address: Addr::unchecked(String::from_utf8_lossy(contract_addr)),
+            },
+        };
+        let env = to_json_vec(&env).map_err(|e| VmError::serialize_err("Env", e))?;
         call_query_raw(&mut instance, &env, msg)
     }
 }
