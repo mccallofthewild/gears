@@ -26,6 +26,10 @@ const SEQUENCE_STORE_PREFIX: [u8; 1] = [0x03];
 #[allow(dead_code)]
 const CODE_INDEX_PREFIX: [u8; 1] = [0x04];
 
+const KEY_SEQ_CODE_ID: &[u8] = b"lastCodeId";
+#[allow(dead_code)]
+const KEY_SEQ_CONTRACT_ID: &[u8] = b"lastContractId";
+
 /// Return the key under which contract code is stored.
 #[allow(dead_code)]
 fn code_key(id: u64) -> Vec<u8> {
@@ -41,6 +45,29 @@ fn contract_key(addr: &gears::types::address::AccAddress) -> Vec<u8> {
         addr.as_ref(),
     ]
     .concat()
+}
+
+/// Derive the storage key for a sequence counter.
+#[allow(dead_code)]
+fn sequence_key(name: &[u8]) -> Vec<u8> {
+    [SEQUENCE_STORE_PREFIX.as_slice(), name].concat()
+}
+
+fn next_sequence<DB: Database, SKT: StoreKey, CTX: TransactionalContext<DB, SKT>>(
+    ctx: &mut CTX,
+    store_key: &SKT,
+    name: &[u8],
+) -> Result<u64, GasStoreErrors> {
+    let mut store = ctx.kv_store_mut(store_key);
+    let key = sequence_key(name);
+    let current = store
+        .get(&key)?
+        .and_then(|v| v.as_slice().try_into().ok())
+        .map(u64::from_be_bytes)
+        .unwrap_or(0);
+    let next = current + 1;
+    store.set(key, next.to_be_bytes())?;
+    Ok(next)
 }
 
 /// Keeper managing wasm bytecode and contract state.
@@ -99,13 +126,19 @@ where
     /// Store compiled code and return its numeric identifier.
     pub fn store_code<DB: Database, CTX: TransactionalContext<DB, SK>>(
         &self,
-        _ctx: &mut CTX,
+        ctx: &mut CTX,
         _sender: &gears::types::address::AccAddress,
         _wasm: &[u8],
         _permission: Option<AccessConfig>,
     ) -> Result<u64, WasmError> {
+        // <COSMWASM_PROGRESS.md#L56-L58>
+        let _id = next_sequence(ctx, &self.store_key, KEY_SEQ_CODE_ID).map_err(|e| {
+            WasmError::Internal {
+                reason: e.to_string(),
+            }
+        })?;
         // TODO: store bytes, update code index and call the engine
-        todo!("store_code not yet implemented")
+        todo!("store_code not yet implemented; id reserved")
     }
 
     /// Instantiate a stored contract.
@@ -120,6 +153,7 @@ where
         _msg: Binary,
         _funds: gears::types::base::coins::UnsignedCoins,
     ) -> Result<gears::types::address::AccAddress, WasmError> {
+        // <COSMWASM_PROGRESS.md#L56-L58>
         todo!("instantiate not yet implemented")
     }
 
@@ -132,6 +166,7 @@ where
         _msg: Binary,
         _funds: gears::types::base::coins::UnsignedCoins,
     ) -> Result<Response, WasmError> {
+        // <COSMWASM_PROGRESS.md#L56-L58>
         todo!("execute not yet implemented")
     }
 
@@ -142,6 +177,7 @@ where
         _contract: &gears::types::address::AccAddress,
         _msg: Binary,
     ) -> Result<Binary, WasmError> {
+        // <COSMWASM_PROGRESS.md#L56-L58>
         todo!("query not yet implemented")
     }
 }

@@ -54,6 +54,8 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
   - [x] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.
     - [x] Provide helper functions for key derivation compatible with `wasmd`.
   - [ ] Implement contract lifecycle methods (`store_code`, `instantiate`, `execute`, `query`, `migrate`, admin updates, `contracts_by_code`).
+    - [x] Added stubs and sequence helpers in keeper
+    - [ ] Complete implementations and metadata persistence
     - [ ] Integrate parameter access and gas metering with the engine.
   - [ ] Support concurrency via interior mutability and interact with bank and IBC keepers.
 
