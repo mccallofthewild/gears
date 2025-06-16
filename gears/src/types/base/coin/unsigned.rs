@@ -4,7 +4,14 @@ use extensions::pagination::PaginationKey;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, str::FromStr};
 
-use crate::types::{base::errors::CoinError, denom::Denom, errors::DenomError};
+use crate::types::{
+    base::{
+        coins::UnsignedCoins,
+        errors::{CoinError, CoinsError},
+    },
+    denom::Denom,
+    errors::DenomError,
+};
 
 use super::Coin;
 
@@ -59,6 +66,52 @@ impl From<UnsignedCoin> for inner::Coin {
 
 impl Protobuf<inner::Coin> for UnsignedCoin {}
 
+// Additional conversions for cosmos-sdk-proto generated Coin used by the
+// CosmWasm module. These mirror the existing conversions above but target the
+// protobuf definitions from `cosmos-sdk-proto` instead of `ibc-proto`.
+use cosmos_sdk_proto::cosmos::base::v1beta1::Coin as SdkCoin;
+
+impl TryFrom<SdkCoin> for UnsignedCoin {
+    type Error = CoinError;
+
+    fn try_from(value: SdkCoin) -> Result<Self, Self::Error> {
+        let denom = value
+            .denom
+            .parse::<Denom>()
+            .map_err(|e: DenomError| CoinError::Denom(e.to_string()))?;
+        let amount =
+            Uint256::from_str(&value.amount).map_err(|e| CoinError::Uint(e.to_string()))?;
+        Ok(UnsignedCoin { denom, amount })
+    }
+}
+
+impl From<UnsignedCoin> for SdkCoin {
+    fn from(value: UnsignedCoin) -> Self {
+        Self {
+            denom: value.denom.to_string(),
+            amount: value.amount.to_string(),
+        }
+    }
+}
+
+impl From<UnsignedCoins> for Vec<SdkCoin> {
+    fn from(coins: UnsignedCoins) -> Self {
+        coins.into_iter().map(Into::into).collect()
+    }
+}
+
+impl TryFrom<Vec<SdkCoin>> for UnsignedCoins {
+    type Error = CoinsError;
+
+    fn try_from(value: Vec<SdkCoin>) -> Result<Self, Self::Error> {
+        let coins = value
+            .into_iter()
+            .map(|c| UnsignedCoin::try_from(c).map_err(|e| CoinsError::Coin(e.to_string())))
+            .collect::<Result<Vec<_>, _>>()?;
+        UnsignedCoins::new(coins)
+    }
+}
+
 impl FromStr for UnsignedCoin {
     type Err = CoinError;
 
@@ -82,13 +135,14 @@ impl TryFrom<Vec<u8>> for UnsignedCoin {
     type Error = CoreError;
 
     fn try_from(raw: Vec<u8>) -> Result<Self, Self::Error> {
-        Self::decode_vec(&raw).map_err(|e| CoreError::DecodeProtobuf(e.to_string()))
+        <UnsignedCoin as Protobuf<inner::Coin>>::decode_vec(&raw)
+            .map_err(|e| CoreError::DecodeProtobuf(e.to_string()))
     }
 }
 
 impl From<UnsignedCoin> for Vec<u8> {
     fn from(value: UnsignedCoin) -> Self {
-        value.encode_vec()
+        <UnsignedCoin as Protobuf<inner::Coin>>::encode_vec(&value)
     }
 }
 

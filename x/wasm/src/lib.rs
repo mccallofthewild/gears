@@ -1,11 +1,18 @@
-//! Placeholder CosmWasm module.
+//! CosmWasm module interface.
+//!
+//! This crate exposes the keeper, message types and runtime engine required
+//! to execute CosmWasm smart contracts. The implementation mirrors
+//! [`wasmd`](https://github.com/CosmWasm/wasmd) and wraps the `cosmwasm_vm`
+//! crate for contract execution.
 
-/// Minimal keeper used for compilation tests.
-#[derive(Debug, Default, Clone)]
-pub struct Keeper;
+pub mod engine;
+pub mod error;
+pub mod keeper;
+pub mod message;
+pub mod params;
+pub mod types;
 
-impl Keeper {
-    pub fn new() -> Self {
-        Self
-    }
-}
+#[cfg(feature = "cli")]
+pub mod client;
+
+pub use keeper::Keeper;

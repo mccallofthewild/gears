@@ -2,58 +2,64 @@
 
 Below is the recommended order for implementing the files within `x/wasm`. Each item now includes subtasks derived from the accompanying ADRs.
 
-- [ ] **x/wasm/Cargo.toml** – crate manifest defining dependencies for the module. It underpins compilation of all subsequent files.
-  - [ ] Declare mandatory dependencies and VM features.
-    - [ ] Add `cosmwasm-vm`, `cosmwasm-std`, `serde`, `serde_json`, `thiserror`, `anyhow` and `gears`.
-    - [ ] Use workspace paths for `core-types`, `gas` and `tendermint`.
-  - [ ] Configure optional features for clients and VM extensions.
-    - [ ] Provide `grpc`, `rest` and `cli` toggles in addition to `stargate`, `iterator` and `IBC`.
-  - [ ] Integrate test harness and release settings.
-    - [ ] Include a `[[test]]` target with `cosmwasm-schema` and set `rust-version` plus `panic = "abort"`.
+- [x] **x/wasm/Cargo.toml** – crate manifest defining dependencies for the module. It underpins compilation of all subsequent files.
+  - [x] Declare mandatory dependencies and VM features.
+    - [x] Add `cosmwasm-vm`, `cosmwasm-std`, `serde`, `serde_json`, `thiserror`, `anyhow` and `gears`.
+    - [x] Use workspace paths for `core-types`, `gas` and `tendermint`.
+  - [x] Configure optional features for clients and VM extensions.
+    - [x] Provide `grpc`, `rest` and `cli` toggles in addition to `stargate`, `iterator` and `IBC`.
+  - [x] Integrate test harness and release settings.
+    - [x] Include a `[[test]]` target with `cosmwasm-schema` and set `rust-version` plus `panic = "abort"`.
 
-- [ ] **x/wasm/src/message.rs** – transaction message structures such as `MsgStoreCode` and `MsgInstantiateContract`.
-  - [ ] Define the `Message` enum covering store, instantiate, execute, migrate and admin updates.
-    - [ ] Ensure variants map one-to-one with `wasmd` messages.
-  - [ ] Derive serialization and protobuf conversions.
-    - [ ] Apply `#[serde(tag = "@type")]` and the `FromProto`/`ToProto` macros.
-  - [ ] Implement `validate_basic()` tests for each variant.
+- [x] **x/wasm/src/message.rs** – transaction message structures such as `MsgStoreCode` and `MsgInstantiateContract`.
+  - [x] Define the `Message` enum covering store, instantiate, execute, migrate and admin updates.
+    - [x] Ensure variants map one-to-one with `wasmd` messages.
+  - [x] Derive serialization and protobuf conversions.
+    - [x] Apply `#[serde(tag = "@type")]` and the `FromProto`/`ToProto` macros.
+  - [x] Implement `validate_basic()` tests for each variant.
 
-- [ ] **x/wasm/src/types/query.rs** – request and response types for contract queries.
-  - [ ] Implement structs `QuerySmartContractState`, `QueryRawContractState`, `QueryCode`, `QueryContractInfo` and `QueryContractsByCode`.
-    - [ ] Use `Address` and `Binary` fields matching the ADR specification.
-  - [ ] Add the `WasmQuery` enum implementing `AppQuery` with serde examples.
-    - [ ] Document pagination defaults using `PageRequest` and `PageResponse`.
-  - [ ] Provide unit tests for JSON and protobuf round‑trips.
+- [x] **x/wasm/src/types/query.rs** – request and response types for contract queries.
+  - [x] Implement structs `QuerySmartContractState`, `QueryRawContractState`, `QueryCode`, `QueryContractInfo` and `QueryContractsByCode`.
+    - [x] Use `Address` and `Binary` fields matching the ADR specification.
+  - [x] Add the `WasmQuery` enum implementing `AppQuery` with serde examples.
+    - [x] Document pagination defaults using `PageRequest` and `PageResponse`.
+  - [x] Provide unit tests for JSON and protobuf round‑trips.
 
-- [ ] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use.
-  - [ ] Re-export `query` and commonly used structs at the module root.
-    - [ ] Include rustdoc links to `wasmd` type definitions.
-  - [ ] Keep the public API stable and show example imports.
+- [x] **x/wasm/src/types/mod.rs** – exposes the query submodule for external use.
+  - [x] Re-export `query` and commonly used structs at the module root.
+    - [x] Include rustdoc links to `wasmd` type definitions.
+  - [x] Keep the public API stable and show example imports.
 
-- [ ] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour.
-  - [ ] Create the `Params` struct with fields like `code_upload_access`, `query_gas_limit` and `memory_cache_size`.
-    - [ ] Provide `Default` values mirroring the `wasmd` genesis file.
-  - [ ] Implement `WasmParamsKeeper` with `get_params`, `set_params` and `on_update`.
-    - [ ] Notify the engine when parameters change.
-  - [ ] Add CLI support for displaying and updating params.
+- [x] **x/wasm/src/params.rs** – module parameters controlling wasm behaviour.
+  - [x] Create the `Params` struct with fields like `code_upload_access`, `query_gas_limit` and `memory_cache_size`.
+    - [x] Provide `Default` values mirroring the `wasmd` genesis file.
+  - [x] Implement `WasmParamsKeeper` with `get_params`, `set_params` and `on_update`.
+    - [x] Notify the engine when parameters change.
+  - [x] Add CLI support for displaying and updating params.
 
-- [ ] **x/wasm/src/error.rs** – common error enum for the wasm module.
-  - [ ] Define `WasmError` variants for compile, runtime, not found, unauthorized, invalid request and internal failures.
-    - [ ] Implement `From<VmError>` and other conversions.
-  - [ ] Map variants to ABCI codes and provide `Display` messages.
-    - [ ] Unit test error mappings and logging output.
+- [x] **x/wasm/src/error.rs** – common error enum for the wasm module.
+  - [x] Define `WasmError` variants for compile, runtime, not found, unauthorized, invalid request and internal failures.
+    - [x] Implement `From<VmError>` and other conversions.
+  - [x] Map variants to ABCI codes and provide `Display` messages.
+    - [x] Unit test error mappings and logging output.
 
-- [ ] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton.
-  - [ ] Specify trait methods mirroring `wasmvm` (`store_code`, `analyze_code`, `instantiate`, `execute`, `migrate`, `query`, `sudo`, `reply`, `ibc_*`).
-    - [ ] Implement `CosmwasmEngine` using `cosmwasm_vm::Vm` and a disk cache.
-  - [ ] Handle memory limits, gas accounting and code analysis.
-    - [ ] Convert `VmError` into `WasmError` and guard the cache with synchronization primitives.
-  - [ ] Document example usage and note possibilities for alternative engines.
+- [x] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton.
+  - [x] Specify trait methods mirroring `wasmvm` (`store_code`, `analyze_code`, `instantiate`, `execute`, `migrate`, `query`, `sudo`, `reply`, `ibc_*`).
+    - [x] Implement `CosmwasmEngine` using `cosmwasm_vm::Vm` and a disk cache.
+  - [x] Handle memory limits, gas accounting and code analysis.
+    - [x] Convert `VmError` into `WasmError` and guard the cache with synchronization primitives.
+  - [x] Document example usage and note possibilities for alternative engines.
+  - [ ] Expand `CosmwasmEngine` execution support
+    - [ ] Implement `instantiate`, `execute` and `query` methods
 
 - [ ] **x/wasm/src/keeper.rs** – core keeper managing state and delegating execution to a `WasmEngine`.
-  - [ ] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.
-    - [ ] Provide helper functions for key derivation compatible with `wasmd`.
+  - [x] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.
+    - [x] Provide helper functions for key derivation compatible with `wasmd`.
   - [ ] Implement contract lifecycle methods (`store_code`, `instantiate`, `execute`, `query`, `migrate`, admin updates, `contracts_by_code`).
+    - [x] Added stubs and sequence helpers in keeper
+    - [ ] Complete implementations and metadata persistence
+      - [x] `store_code` stores `CodeInfo` and reserves IDs
+      - [ ] `instantiate`, `execute`, `query`, `migrate` and admin mutations
     - [ ] Integrate parameter access and gas metering with the engine.
   - [ ] Support concurrency via interior mutability and interact with bank and IBC keepers.
 
