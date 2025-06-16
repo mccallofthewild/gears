@@ -2,6 +2,10 @@ use extensions::pagination::{Pagination, PaginationByKey, PaginationByOffset};
 use serde::Deserialize;
 use vec1::Vec1;
 
+use crate::error::ProtobufError;
+use core_types::query::request::PageRequest as ProtoPageRequest;
+use cosmos_sdk_proto::cosmos::base::query::v1beta1::PageRequest as SdkPageRequest;
+
 pub(crate) const QUERY_DEFAULT_LIMIT: u8 = 100;
 
 #[derive(Deserialize, serde::Serialize, Debug, Clone, Eq, PartialEq)]
@@ -81,3 +85,32 @@ impl From<PaginationRequest> for core_types::query::request::PageRequest {
         }
     }
 }
+
+impl TryFrom<SdkPageRequest> for PaginationRequest {
+    type Error = ProtobufError;
+
+    fn try_from(value: SdkPageRequest) -> Result<Self, Self::Error> {
+        Ok(Self::from(ProtoPageRequest {
+            key: value.key,
+            offset: value.offset,
+            limit: value.limit,
+            count_total: value.count_total,
+            reverse: value.reverse,
+        }))
+    }
+}
+
+impl From<PaginationRequest> for SdkPageRequest {
+    fn from(value: PaginationRequest) -> Self {
+        let core: ProtoPageRequest = value.into();
+        Self {
+            key: core.key,
+            offset: core.offset,
+            limit: core.limit,
+            count_total: core.count_total,
+            reverse: core.reverse,
+        }
+    }
+}
+
+impl core_types::Protobuf<SdkPageRequest> for PaginationRequest {}

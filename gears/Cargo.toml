@@ -32,6 +32,7 @@ num-bigint = { workspace = true }
 cosmwasm-std = "2.0.0"
 ux = { workspace = true }
 ibc-proto = { workspace = true }
+cosmos-sdk-proto = { workspace = true }
 
 #utils
 anyhow = { workspace = true }

@@ -11,7 +11,7 @@ use gears::{
     derive::AppMessage,
     types::{
         address::AccAddress,
-        base::{coins::UnsignedCoins, errors::CoinsError},
+        base::{coins::UnsignedCoins, errors::CoinError},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -216,7 +216,7 @@ impl TryFrom<proto::ProtoMsgInstantiateContract> for MsgInstantiateContract {
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e: CoinsError| CoreError::Coins(e.to_string()))?;
+            .map_err(|e: CoinError| CoreError::Coins(e.to_string()))?;
         Ok(MsgInstantiateContract {
             sender,
             admin,
@@ -274,7 +274,7 @@ impl TryFrom<proto::ProtoMsgExecuteContract> for MsgExecuteContract {
             .into_iter()
             .map(TryInto::try_into)
             .collect::<Result<Vec<_>, _>>()
-            .map_err(|e: CoinsError| CoreError::Coins(e.to_string()))?;
+            .map_err(|e: CoinError| CoreError::Coins(e.to_string()))?;
         Ok(MsgExecuteContract {
             sender,
             contract,

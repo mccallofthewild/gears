@@ -1,6 +1,9 @@
 use extensions::pagination::{PaginationKey, PaginationResultElement};
 use serde::{Deserialize, Serialize};
 
+use crate::error::ProtobufError;
+use cosmos_sdk_proto::cosmos::base::query::v1beta1::PageResponse as SdkPageResponse;
+
 mod inner {
     pub use core_types::query::response::PageResponse;
 }
@@ -47,3 +50,25 @@ impl<T: PaginationKey> From<PaginationResultElement<T>> for PaginationResponse {
         }
     }
 }
+
+impl TryFrom<SdkPageResponse> for PaginationResponse {
+    type Error = ProtobufError;
+
+    fn try_from(value: SdkPageResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            next_key: value.next_key,
+            total: value.total,
+        })
+    }
+}
+
+impl From<PaginationResponse> for SdkPageResponse {
+    fn from(value: PaginationResponse) -> Self {
+        Self {
+            next_key: value.next_key,
+            total: value.total,
+        }
+    }
+}
+
+impl core_types::Protobuf<SdkPageResponse> for PaginationResponse {}
