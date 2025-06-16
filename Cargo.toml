@@ -37,8 +37,8 @@ members = [
   "x/mint",
 
   # new unsorted
+  "x/wasm",
 ]
-exclude = ["x/wasm"]
 resolver = "2"
 
 [workspace.dependencies]
