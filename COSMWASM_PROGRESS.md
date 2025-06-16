@@ -43,12 +43,12 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
   - [x] Map variants to ABCI codes and provide `Display` messages.
     - [x] Unit test error mappings and logging output.
 
-- [ ] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton.
-  - [ ] Specify trait methods mirroring `wasmvm` (`store_code`, `analyze_code`, `instantiate`, `execute`, `migrate`, `query`, `sudo`, `reply`, `ibc_*`).
-    - [ ] Implement `CosmwasmEngine` using `cosmwasm_vm::Vm` and a disk cache.
-  - [ ] Handle memory limits, gas accounting and code analysis.
-    - [ ] Convert `VmError` into `WasmError` and guard the cache with synchronization primitives.
-  - [ ] Document example usage and note possibilities for alternative engines.
+- [x] **x/wasm/src/engine.rs** – defines the `WasmEngine` trait and a `CosmwasmEngine` skeleton.
+  - [x] Specify trait methods mirroring `wasmvm` (`store_code`, `analyze_code`, `instantiate`, `execute`, `migrate`, `query`, `sudo`, `reply`, `ibc_*`).
+    - [x] Implement `CosmwasmEngine` using `cosmwasm_vm::Vm` and a disk cache.
+  - [x] Handle memory limits, gas accounting and code analysis.
+    - [x] Convert `VmError` into `WasmError` and guard the cache with synchronization primitives.
+  - [x] Document example usage and note possibilities for alternative engines.
 
 - [ ] **x/wasm/src/keeper.rs** – core keeper managing state and delegating execution to a `WasmEngine`.
   - [ ] Set up stores for code, contracts, sequences and `code_index` as described in the ADR.

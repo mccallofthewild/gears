@@ -196,8 +196,21 @@ impl<PSK: ParamsSubspaceKey> WasmParamsKeeper<PSK> {
     /// The current implementation simply logs the change. Integration
     /// with `WasmEngine` will allow resizing caches or adjusting limits at
     /// runtime once the engine is implemented.
-    pub fn on_update(&self, _old: &Params, _new: &Params) {
-        // TODO: forward the update to the engine once implemented
+    /// Forward parameter changes to the [`WasmEngine`].
+    ///
+    /// The keeper will call this after executing a governance proposal that
+    /// modifies the wasm module's parameters. Engines can react by resizing
+    /// internal caches or adjusting limits.
+    pub fn on_update<E, A, S, Q>(&self, engine: &E, old: &Params, new: &Params)
+    where
+        E: crate::engine::WasmEngine<A, S, Q>,
+        A: cosmwasm_vm::BackendApi,
+        S: cosmwasm_vm::Storage,
+        Q: cosmwasm_vm::Querier,
+    {
+        if let Err(err) = engine.on_params_change(old, new) {
+            tracing::warn!("failed to notify wasm engine of param change: {err}");
+        }
     }
 }
 
