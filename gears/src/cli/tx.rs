@@ -36,7 +36,8 @@ pub struct CliTxCommand<T: ApplicationInfo, C: Args> {
     pub keyring: Keyring,
 
     #[command(flatten)]
-    #[group(id = "local", conflicts_with = Keyring::Ledger, global = true)]
+    #[cfg_attr(feature = "ledger", group(id = "local", conflicts_with = Keyring::Ledger, global = true))]
+    #[cfg_attr(not(feature = "ledger"), group(id = "local", global = true))]
     pub local: Option<Local<T>>,
 
     #[command(flatten)]
@@ -123,6 +124,7 @@ pub struct Mode {
 #[derive(ValueEnum, Debug, Clone, Display)]
 pub enum Keyring {
     /// Use a Ledger device to sign the transaction
+    #[cfg(feature = "ledger")]
     #[strum(to_string = "ledger")]
     Ledger,
     /// Use a local keyring to source the signing key
@@ -146,6 +148,7 @@ pub struct Local<T: ApplicationInfo> {
     _marker: PhantomData<T>,
 }
 
+#[cfg(feature = "ledger")]
 #[derive(Debug, Clone, ::clap::Args)]
 pub struct Ledger<C: Subcommand> {
     #[command(subcommand)]
@@ -180,6 +183,7 @@ where
         } = value;
 
         let keyring = match keyring {
+            #[cfg(feature = "ledger")]
             Keyring::Ledger => TxKeyring::Ledger,
             Keyring::Local => {
                 let Local {

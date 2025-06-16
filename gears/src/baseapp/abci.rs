@@ -191,12 +191,12 @@ impl<DB: Database, PSK: ParamsSubspaceKey, H: ABCIHandler, AI: ApplicationInfo>
     fn deliver_tx(&self, RequestDeliverTx { tx }: RequestDeliverTx) -> ResponseDeliverTx {
         let mut state = self.state.write().expect(POISONED_LOCK);
 
+        let tx_index = state.tx_index;
+
         let DeliverTxMode {
             block_gas_meter,
             multi_store,
         } = &mut state.deliver_mode;
-
-        let tx_index = state.tx_index;
         let result =
             self.run_tx::<DeliverTxMode<_, _>>(tx.clone(), tx_index, multi_store, block_gas_meter);
         state.tx_index += 1;
