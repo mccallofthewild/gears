@@ -1,7 +1,9 @@
 use std::{marker::PhantomData, path::PathBuf};
 
 use address::AccAddress;
-use clap::{ArgAction, Args, Subcommand, ValueEnum, ValueHint};
+#[cfg(feature = "ledger")]
+use clap::Subcommand;
+use clap::{ArgAction, Args, ValueEnum, ValueHint};
 use strum::Display;
 use tendermint::types::chain_id::ChainId;
 

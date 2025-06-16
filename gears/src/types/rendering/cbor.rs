@@ -11,8 +11,7 @@ pub trait Cbor {
 
 impl<V: Serialize> Cbor for BTreeMap<CanonicalValue, V> {
     fn encode(&self, writter: &mut impl Write) -> Result<(), std::io::Error> {
-        ciborium::into_writer(self, writter)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))
+        ciborium::into_writer(self, writter).map_err(|e| std::io::Error::other(e.to_string()))
     }
 }
 

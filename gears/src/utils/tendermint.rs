@@ -110,7 +110,7 @@ impl TendermintSubprocess {
 impl Drop for TendermintSubprocess {
     fn drop(&mut self) {
         // Stop child process before deletion of tmp dir
-        while let Err(_) = self.child.kill() {
+        while self.child.kill().is_err() {
             std::thread::sleep(std::time::Duration::from_millis(100))
         }
     }

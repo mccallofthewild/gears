@@ -12,7 +12,7 @@ mod utils;
 
 #[test]
 fn test_init_and_few_blocks() {
-    let mut node = set_node(None, None);
+    let mut node = set_node(None, None, None);
 
     let app_hash = &node.step(vec![], Timestamp::UNIX_EPOCH).app_hash;
 
@@ -40,6 +40,7 @@ fn test_init_and_few_blocks_with_tokens() {
         Some(MockStakingKeeper::new(Decimal256::new(Uint256::from(
             1000000000_u64,
         )))),
+        None,
     );
 
     let app_hash = &node.step(vec![], Timestamp::UNIX_EPOCH).app_hash;
