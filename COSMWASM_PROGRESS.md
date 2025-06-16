@@ -35,7 +35,7 @@ Below is the recommended order for implementing the files within `x/wasm`. Each 
     - [x] Provide `Default` values mirroring the `wasmd` genesis file.
   - [x] Implement `WasmParamsKeeper` with `get_params`, `set_params` and `on_update`.
     - [x] Notify the engine when parameters change.
-  - [ ] Add CLI support for displaying and updating params.
+  - [x] Add CLI support for displaying and updating params.
 
 - [x] **x/wasm/src/error.rs** – common error enum for the wasm module.
   - [x] Define `WasmError` variants for compile, runtime, not found, unauthorized, invalid request and internal failures.

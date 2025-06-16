@@ -12,4 +12,7 @@ pub mod message;
 pub mod params;
 pub mod types;
 
+#[cfg(feature = "cli")]
+pub mod client;
+
 pub use keeper::Keeper;
