@@ -38,6 +38,8 @@ pub struct TxContext<'a, DB, SK> {
     pub(crate) header: Header,
     pub(crate) block_gas_meter: &'a mut GasMeter<BlockKind>,
     pub(crate) consensus_params: ConsensusParams,
+    pub(crate) tx_index: u32,
+    pub(crate) tx_hash: [u8; 32],
     multi_store: &'a mut TransactionMultiBank<DB, SK>,
 }
 
@@ -50,6 +52,8 @@ impl<'a, DB, SK> TxContext<'a, DB, SK> {
         gas_meter: GasMeter<TxKind>,
         block_gas_meter: &'a mut GasMeter<BlockKind>,
         node_opt: NodeOptions,
+        tx_index: u32,
+        tx_hash: [u8; 32],
     ) -> Self {
         Self {
             events: Vec::new(),
@@ -60,6 +64,8 @@ impl<'a, DB, SK> TxContext<'a, DB, SK> {
             block_gas_meter,
             consensus_params,
             node_opt,
+            tx_index,
+            tx_hash,
         }
     }
 
@@ -78,6 +84,14 @@ impl<'a, DB, SK> TxContext<'a, DB, SK> {
 
     pub fn header(&self) -> &Header {
         &self.header
+    }
+
+    pub fn tx_index(&self) -> u32 {
+        self.tx_index
+    }
+
+    pub fn tx_hash(&self) -> [u8; 32] {
+        self.tx_hash
     }
 }
 
@@ -134,5 +148,13 @@ impl<DB: Database, SK: StoreKey> TransactionalContext<DB, SK> for TxContext<'_, 
 
     fn kv_store_mut(&mut self, store_key: &SK) -> StoreMut<'_, PrefixDB<DB>> {
         StoreMut::from(self.kv_store_mut(store_key))
+    }
+
+    fn tx_index(&self) -> u32 {
+        self.tx_index
+    }
+
+    fn tx_hash(&self) -> [u8; 32] {
+        self.tx_hash
     }
 }

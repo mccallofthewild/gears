@@ -8,7 +8,7 @@ use crate::{
         QueryCodeRequest, QueryCodesRequest, QueryContractInfoRequest, QueryContractsByCodeRequest,
         QueryRawContractStateRequest, QuerySmartContractStateRequest,
     },
-    WasmNodeQueryRequest, WasmNodeQueryResponse,
+    WasmNodeQueryRequest, WasmNodeQueryResponse, WasmQuery,
 };
 use axum::{
     extract::{Path, State},
@@ -16,7 +16,7 @@ use axum::{
     Json, Router,
 };
 use gears::{
-    baseapp::{NodeQueryHandler, QueryRequest, QueryResponse},
+    baseapp::{LatestHeight, NodeQueryHandler, QueryRequest, QueryResponse},
     rest::{error::HTTPError, RestState},
 };
 use serde::Deserialize;
@@ -37,12 +37,15 @@ struct RawQuery {
 pub async fn contract_info<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >(
     Path(address): Path<String>,
     State(rest_state): State<RestState<QReq, QRes, App>>,
 ) -> Result<Json<QRes>, HTTPError> {
-    let req = WasmNodeQueryRequest::ContractInfo(QueryContractInfoRequest { address });
+    let req = WasmNodeQueryRequest {
+        height: rest_state.app.latest_height(),
+        query: WasmQuery::ContractInfo(QueryContractInfoRequest { address }),
+    };
     let res = rest_state.app.typed_query(req)?;
     Ok(Json(res))
 }
@@ -51,12 +54,15 @@ pub async fn contract_info<
 pub async fn code<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >(
     Path(code_id): Path<u64>,
     State(rest_state): State<RestState<QReq, QRes, App>>,
 ) -> Result<Json<QRes>, HTTPError> {
-    let req = WasmNodeQueryRequest::Code(QueryCodeRequest { code_id });
+    let req = WasmNodeQueryRequest {
+        height: rest_state.app.latest_height(),
+        query: WasmQuery::Code(QueryCodeRequest { code_id }),
+    };
     let res = rest_state.app.typed_query(req)?;
     Ok(Json(res))
 }
@@ -65,11 +71,14 @@ pub async fn code<
 pub async fn codes<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >(
     State(rest_state): State<RestState<QReq, QRes, App>>,
 ) -> Result<Json<QRes>, HTTPError> {
-    let req = WasmNodeQueryRequest::Codes(QueryCodesRequest {});
+    let req = WasmNodeQueryRequest {
+        height: rest_state.app.latest_height(),
+        query: WasmQuery::Codes(QueryCodesRequest {}),
+    };
     let res = rest_state.app.typed_query(req)?;
     Ok(Json(res))
 }
@@ -78,12 +87,15 @@ pub async fn codes<
 pub async fn contracts_by_code<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >(
     Path(code_id): Path<u64>,
     State(rest_state): State<RestState<QReq, QRes, App>>,
 ) -> Result<Json<QRes>, HTTPError> {
-    let req = WasmNodeQueryRequest::ContractsByCode(QueryContractsByCodeRequest { code_id });
+    let req = WasmNodeQueryRequest {
+        height: rest_state.app.latest_height(),
+        query: WasmQuery::ContractsByCode(QueryContractsByCodeRequest { code_id }),
+    };
     let res = rest_state.app.typed_query(req)?;
     Ok(Json(res))
 }
@@ -92,16 +104,19 @@ pub async fn contracts_by_code<
 pub async fn smart_contract_state<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >(
     Path((address, SmartQuery { query_data })): Path<(String, SmartQuery)>,
     State(rest_state): State<RestState<QReq, QRes, App>>,
 ) -> Result<Json<QRes>, HTTPError> {
     let data = hex::decode(&query_data).unwrap_or_else(|_| query_data.into_bytes());
-    let req = WasmNodeQueryRequest::Smart(QuerySmartContractStateRequest {
-        address,
-        query_data: data,
-    });
+    let req = WasmNodeQueryRequest {
+        height: rest_state.app.latest_height(),
+        query: WasmQuery::Smart(QuerySmartContractStateRequest {
+            address,
+            query_data: data,
+        }),
+    };
     let res = rest_state.app.typed_query(req)?;
     Ok(Json(res))
 }
@@ -110,13 +125,16 @@ pub async fn smart_contract_state<
 pub async fn raw_contract_state<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >(
     Path((address, RawQuery { query_data })): Path<(String, RawQuery)>,
     State(rest_state): State<RestState<QReq, QRes, App>>,
 ) -> Result<Json<QRes>, HTTPError> {
     let key = hex::decode(&query_data).unwrap_or_else(|_| query_data.into_bytes());
-    let req = WasmNodeQueryRequest::Raw(QueryRawContractStateRequest { address, key });
+    let req = WasmNodeQueryRequest {
+        height: rest_state.app.latest_height(),
+        query: WasmQuery::Raw(QueryRawContractStateRequest { address, key }),
+    };
     let res = rest_state.app.typed_query(req)?;
     Ok(Json(res))
 }
@@ -124,7 +142,7 @@ pub async fn raw_contract_state<
 pub fn get_router<
     QReq: QueryRequest + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse>,
-    App: NodeQueryHandler<QReq, QRes>,
+    App: NodeQueryHandler<QReq, QRes> + LatestHeight,
 >() -> Router<RestState<QReq, QRes, App>> {
     Router::new()
         .route("/v1/contract/:address", get(contract_info))

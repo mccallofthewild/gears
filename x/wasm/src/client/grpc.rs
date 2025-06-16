@@ -23,7 +23,8 @@ use std::marker::PhantomData;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
-use crate::{WasmNodeQueryRequest, WasmNodeQueryResponse};
+use crate::{WasmNodeQueryRequest, WasmNodeQueryResponse, WasmQuery};
+use gears::baseapp::LatestHeight;
 
 const ERROR_STATE_MSG: &str = "An internal error occurred while querying the application state.";
 
@@ -38,14 +39,17 @@ impl<QReq, QRes, QH> Query for WasmService<QH, QReq, QRes>
 where
     QReq: QueryRequest + From<WasmNodeQueryRequest> + Send + Sync + 'static,
     QRes: QueryResponse + TryInto<WasmNodeQueryResponse, Error = Status> + Send + Sync + 'static,
-    QH: NodeQueryHandler<QReq, QRes> + Send + Sync + 'static,
+    QH: NodeQueryHandler<QReq, QRes> + LatestHeight + Send + Sync + 'static,
 {
     async fn contract_info(
         &self,
         request: Request<RawQueryContractInfoRequest>,
     ) -> Result<Response<RawQueryContractInfoResponse>, Status> {
         info!("Received gRPC request wasm::contract_info");
-        let req = WasmNodeQueryRequest::ContractInfo(request.into_inner().try_into()?);
+        let req = WasmNodeQueryRequest {
+            height: self.app.latest_height(),
+            query: WasmQuery::ContractInfo(request.into_inner().try_into()?),
+        };
         let response: WasmNodeQueryResponse = self.app.typed_query(req)?.try_into()?;
 
         if let WasmNodeQueryResponse::ContractInfo(resp) = response {
@@ -60,7 +64,10 @@ where
         request: Request<RawQueryCodeRequest>,
     ) -> Result<Response<RawQueryCodeResponse>, Status> {
         info!("Received gRPC request wasm::code");
-        let req = WasmNodeQueryRequest::Code(request.into_inner().try_into()?);
+        let req = WasmNodeQueryRequest {
+            height: self.app.latest_height(),
+            query: WasmQuery::Code(request.into_inner().try_into()?),
+        };
         let response: WasmNodeQueryResponse = self.app.typed_query(req)?.try_into()?;
         if let WasmNodeQueryResponse::Code(resp) = response {
             Ok(Response::new(resp.into()))
@@ -74,7 +81,10 @@ where
         request: Request<RawQueryCodesRequest>,
     ) -> Result<Response<RawQueryCodesResponse>, Status> {
         info!("Received gRPC request wasm::codes");
-        let req = WasmNodeQueryRequest::Codes(request.into_inner().try_into()?);
+        let req = WasmNodeQueryRequest {
+            height: self.app.latest_height(),
+            query: WasmQuery::Codes(request.into_inner().try_into()?),
+        };
         let response: WasmNodeQueryResponse = self.app.typed_query(req)?.try_into()?;
 
         if let WasmNodeQueryResponse::Codes(resp) = response {
@@ -89,7 +99,10 @@ where
         request: Request<RawQueryContractsByCodeRequest>,
     ) -> Result<Response<RawQueryContractsByCodeResponse>, Status> {
         info!("Received gRPC request wasm::contracts_by_code");
-        let req = WasmNodeQueryRequest::ContractsByCode(request.into_inner().try_into()?);
+        let req = WasmNodeQueryRequest {
+            height: self.app.latest_height(),
+            query: WasmQuery::ContractsByCode(request.into_inner().try_into()?),
+        };
         let response: WasmNodeQueryResponse = self.app.typed_query(req)?.try_into()?;
 
         if let WasmNodeQueryResponse::ContractsByCode(resp) = response {
@@ -104,7 +117,10 @@ where
         request: Request<RawQuerySmartContractStateRequest>,
     ) -> Result<Response<RawQuerySmartContractStateResponse>, Status> {
         info!("Received gRPC request wasm::smart_contract_state");
-        let req = WasmNodeQueryRequest::Smart(request.into_inner().try_into()?);
+        let req = WasmNodeQueryRequest {
+            height: self.app.latest_height(),
+            query: WasmQuery::Smart(request.into_inner().try_into()?),
+        };
         let response: WasmNodeQueryResponse = self.app.typed_query(req)?.try_into()?;
 
         if let WasmNodeQueryResponse::Smart(resp) = response {
@@ -119,7 +135,10 @@ where
         request: Request<RawQueryRawContractStateRequest>,
     ) -> Result<Response<RawQueryRawContractStateResponse>, Status> {
         info!("Received gRPC request wasm::raw_contract_state");
-        let req = WasmNodeQueryRequest::Raw(request.into_inner().try_into()?);
+        let req = WasmNodeQueryRequest {
+            height: self.app.latest_height(),
+            query: WasmQuery::Raw(request.into_inner().try_into()?),
+        };
         let response: WasmNodeQueryResponse = self.app.typed_query(req)?.try_into()?;
 
         if let WasmNodeQueryResponse::Raw(resp) = response {
@@ -134,7 +153,7 @@ pub fn new<QH, QReq, QRes>(app: QH) -> QueryServer<WasmService<QH, QReq, QRes>>
 where
     QReq: QueryRequest + Send + Sync + 'static + From<WasmNodeQueryRequest>,
     QRes: QueryResponse + Send + Sync + 'static + TryInto<WasmNodeQueryResponse, Error = Status>,
-    QH: NodeQueryHandler<QReq, QRes>,
+    QH: NodeQueryHandler<QReq, QRes> + LatestHeight,
 {
     let wasm_service = WasmService {
         app,

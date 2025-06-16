@@ -33,6 +33,8 @@ pub fn build_tx_ctx<'a, DB, SK>(
     multi_store: &'a mut TransactionMultiBank<DB, SK>,
     block_gas_meter: &'a mut GasMeter<BlockKind>,
     opt: impl Into<ContextOptions>,
+    tx_index: u32,
+    tx_hash: [u8; 32],
 ) -> TxContext<'a, DB, SK> {
     let ContextOptions {
         height,
@@ -49,6 +51,8 @@ pub fn build_tx_ctx<'a, DB, SK>(
         gas_meter,
         block_gas_meter,
         options,
+        tx_index,
+        tx_hash,
     )
 }
 

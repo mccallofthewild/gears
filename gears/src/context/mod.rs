@@ -42,6 +42,12 @@ pub trait TransactionalContext<DB, SK>: QueryableContext<DB, SK> {
     fn get_time(&self) -> Timestamp;
     ///  Fetches an mutable ref to a KVStore from the MultiStore.
     fn kv_store_mut(&mut self, store_key: &SK) -> StoreMut<'_, PrefixDB<DB>>;
+
+    /// Index of the currently executing transaction.
+    fn tx_index(&self) -> u32;
+
+    /// Hash of the currently executing transaction.
+    fn tx_hash(&self) -> [u8; 32];
 }
 
 pub trait InfallibleContextMut<DB, SK>:

@@ -39,9 +39,8 @@ where
     _marker: PhantomData<MI>,
 }
 
-#[derive(Clone, Debug, Query)]
-#[query(request)]
-pub enum WasmNodeQueryRequest {
+#[derive(Clone, Debug)]
+pub enum WasmQuery {
     Code(QueryCodeRequest),
     Codes(QueryCodesRequest),
     ContractInfo(QueryContractInfoRequest),
@@ -50,12 +49,15 @@ pub enum WasmNodeQueryRequest {
     Raw(QueryRawContractStateRequest),
 }
 
+#[derive(Clone, Debug)]
+pub struct WasmNodeQueryRequest {
+    pub height: u32,
+    pub query: WasmQuery,
+}
+
 impl QueryRequest for WasmNodeQueryRequest {
     fn height(&self) -> u32 {
-        // Queries against the node API currently always fetch the latest block state.
-        // Returning `0` causes `BaseApp` to open the latest version of the multistore,
-        // matching wasmd's behaviour when no height is specified in the request.
-        0
+        self.height
     }
 }
 
@@ -107,8 +109,8 @@ where
         query: Self::QReq,
     ) -> Self::QRes {
         let keeper = self.keeper.lock().expect("poisoned mutex");
-        match query {
-            WasmNodeQueryRequest::Code(req) => {
+        match query.query {
+            WasmQuery::Code(req) => {
                 let store = ctx.kv_store(&keeper.store_key).prefix_store(CODE_PREFIX);
                 let wasm = store
                     .get(&req.code_id.to_be_bytes())
@@ -118,7 +120,7 @@ where
                     wasm_byte_code: wasm,
                 })
             }
-            WasmNodeQueryRequest::Codes(_) => {
+            WasmQuery::Codes(_) => {
                 let store = ctx.kv_store(&keeper.store_key).prefix_store(CODE_PREFIX);
                 let codes = store
                     .into_range(..)
@@ -126,7 +128,7 @@ where
                     .collect();
                 WasmNodeQueryResponse::Codes(QueryCodesResponse { code_ids: codes })
             }
-            WasmNodeQueryRequest::ContractInfo(req) => {
+            WasmQuery::ContractInfo(req) => {
                 let addr = AccAddress::try_from(req.address).unwrap();
                 let store = ctx
                     .kv_store(&keeper.store_key)
@@ -138,7 +140,7 @@ where
                     .unwrap_or(0);
                 WasmNodeQueryResponse::ContractInfo(QueryContractInfoResponse { code_id: id })
             }
-            WasmNodeQueryRequest::ContractsByCode(req) => {
+            WasmQuery::ContractsByCode(req) => {
                 let store = ctx
                     .kv_store(&keeper.store_key)
                     .prefix_store(CONTRACT_PREFIX);
@@ -155,12 +157,12 @@ where
                     .collect();
                 WasmNodeQueryResponse::ContractsByCode(QueryContractsByCodeResponse { contracts })
             }
-            WasmNodeQueryRequest::Smart(req) => {
+            WasmQuery::Smart(req) => {
                 let addr = AccAddress::try_from(req.address).unwrap();
                 let data = keeper.query(ctx, &addr, &req.query_data).unwrap();
                 WasmNodeQueryResponse::Smart(QuerySmartContractStateResponse { data })
             }
-            WasmNodeQueryRequest::Raw(req) => {
+            WasmQuery::Raw(req) => {
                 let addr = AccAddress::try_from(req.address).unwrap();
                 let data = keeper.query(ctx, &addr, &req.key).unwrap();
                 WasmNodeQueryResponse::Raw(QueryRawContractStateResponse { data })
@@ -187,13 +189,27 @@ where
             Message::StoreCode(MsgStoreCode { wasm_byte_code, .. }) => {
                 keeper.store_code(ctx, wasm_byte_code).map(|_| ())
             }
-            Message::Instantiate(MsgInstantiateContract { code_id, msg, .. }) => {
-                keeper.instantiate(ctx, *code_id, msg).map(|_| ())
+            Message::Instantiate(MsgInstantiateContract {
+                sender,
+                code_id,
+                msg,
+            }) => {
+                let sender = AccAddress::try_from(sender.clone())
+                    .map_err(|e| TxError::new::<MI>(e.to_string(), nz::u16!(1)))?;
+                keeper
+                    .instantiate(ctx, *code_id, &sender, &[], msg)
+                    .map(|_| ())
             }
-            Message::Execute(MsgExecuteContract { contract, msg, .. }) => {
+            Message::Execute(MsgExecuteContract {
+                sender,
+                contract,
+                msg,
+            }) => {
                 let addr = AccAddress::try_from(contract.clone())
                     .map_err(|e| TxError::new::<MI>(e.to_string(), nz::u16!(1)))?;
-                keeper.execute(ctx, &addr, msg).map(|_| ())
+                let sender = AccAddress::try_from(sender.clone())
+                    .map_err(|e| TxError::new::<MI>(e.to_string(), nz::u16!(1)))?;
+                keeper.execute(ctx, &addr, &sender, &[], msg).map(|_| ())
             }
         };
 

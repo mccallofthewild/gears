@@ -15,6 +15,7 @@ pub struct ApplicationState<DB, AH: ABCIHandler> {
     pub(super) deliver_mode: DeliverTxMode<DB, AH>,
     pub head_hash: [u8; 32],
     pub last_height: u32,
+    pub tx_index: u32,
 }
 
 impl<DB: Database, AH: ABCIHandler> ApplicationState<DB, AH> {
@@ -24,6 +25,7 @@ impl<DB: Database, AH: ABCIHandler> ApplicationState<DB, AH> {
             deliver_mode: DeliverTxMode::new(max_gas, multi_store.to_tx_kind()),
             head_hash: multi_store.head_commit_hash(),
             last_height: multi_store.head_version(),
+            tx_index: 0,
         }
     }
 

@@ -101,4 +101,12 @@ impl<DB: Database, SK: StoreKey> TransactionalContext<DB, SK> for InitContext<'_
     fn kv_store_mut(&mut self, store_key: &SK) -> StoreMut<'_, PrefixDB<DB>> {
         StoreMut::from(self.kv_store_mut(store_key))
     }
+
+    fn tx_index(&self) -> u32 {
+        0
+    }
+
+    fn tx_hash(&self) -> [u8; 32] {
+        [0u8; 32]
+    }
 }
