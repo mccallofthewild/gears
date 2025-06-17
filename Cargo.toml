@@ -38,6 +38,8 @@ members = [
 
   # new unsorted
   "x/wasm",
+  "wasmvm",
+  "wasmvm-sys",
 ]
 resolver = "2"
 
@@ -96,7 +98,7 @@ regex = { version = "1.10.2" }
 dirs = { version = "5.0.1" }
 dircpy = { version = "0.3.15" }
 constcat = { version = "0.5.0" }                      # upgraded std::concat! which accepts const
-derive_more = "1.0"
+derive_more = "1.0.0-beta.6"
 former = "0.16.0"
 nz = "0.4.1"
 itertools = "0.13.0"

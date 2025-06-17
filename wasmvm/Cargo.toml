@@ -1,0 +1,24 @@
+[package]
+name = "wasmvm"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+doctest = false
+
+[lints]
+workspace = true
+
+[dependencies]
+cosmwasm-std = "1.5.5"
+sha2 = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+derive_more = "1.0.0-beta.6"
+wasmvm-sys = { path = "../wasmvm-sys" }
+serde_json = { workspace = true }
+cosmwasm-vm = "3.0.0-rc.0"
+
+[build-dependencies]
+bindgen = "0.70.1"
